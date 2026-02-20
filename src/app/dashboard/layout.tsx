@@ -1,6 +1,7 @@
 import { createClient } from '@/app/utils/supabase/server' // Revisa que esta ruta sea exacta
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+export const dynamic = 'force-dynamic' 
 
 export default async function DashboardLayout({
   children,
