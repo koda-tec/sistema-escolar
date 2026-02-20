@@ -47,6 +47,7 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
 
            <div className="flex items-center gap-2">
             <button
+                translate="no"
                 onClick={() => handleStatus(s.id, 'presente')}
                 className={`flex-1 md:flex-none w-10 h-10 md:w-12 md:h-12 rounded-xl font-black text-sm transition-all ${
                 attendance[s.id] === 'presente' 
@@ -57,6 +58,7 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
                 P
             </button>
             <button
+                translate="no"
                 onClick={() => handleStatus(s.id, 'ausente')}
                 className={`flex-1 md:flex-none w-10 h-10 md:w-12 md:h-12 rounded-xl font-black text-sm transition-all ${
                 attendance[s.id] === 'ausente' 
@@ -67,6 +69,7 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
                 A
             </button>
             <button
+                translate="no"
                 onClick={() => handleStatus(s.id, 'justificado')}
                 className={`flex-1 md:flex-none w-10 h-10 md:w-12 md:h-12 rounded-xl font-black text-sm transition-all ${
                 attendance[s.id] === 'justificado' 

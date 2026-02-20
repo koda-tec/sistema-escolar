@@ -98,7 +98,9 @@ export default function GestionAlumnos() {
           <table className="w-full text-left min-w-500px">
             <thead className="bg-slate-50 border-b text-[11px] uppercase text-slate-900 font-black">
               <tr>
-                <th className="p-4 md:p-6">Alumno</th>
+                <th className="p-4 md:p-6">
+                    <span className="notranslate">ALUMNO</span>
+                </th>
                 <th className="p-4 md:p-6">Curso</th>
                 <th className="p-4 md:p-6">Tutor Vinculado</th>
               </tr>
