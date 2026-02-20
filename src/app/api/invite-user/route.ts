@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     // Crear usuario directamente con contraseña
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      email_confirm: true, // El email queda confirmado automáticamente
+      email_confirm: true,
       password,
       user_metadata: {
         full_name: fullName
@@ -30,13 +30,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // Crear el perfil con el rol y school_id
+    // Crear el perfil con el rol y school_id (SIN el campo email)
     if (authData.user) {
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .insert({
           id: authData.user.id,
-          email: email,
           full_name: fullName,
           role: role,
           school_id: schoolId
