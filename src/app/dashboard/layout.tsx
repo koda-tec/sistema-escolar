@@ -5,7 +5,6 @@ import { createClient } from '@/app/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-// Estilo común para los enlaces del menú para evitar repetición
 const linkStyle = "flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition-all text-sm font-medium text-slate-300 hover:text-white"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -43,13 +42,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const brandName = profile?.schools?.name || "KUADERNO"
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 font-sans text-slate-900">
       <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600"></div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-[#f1f5f9] flex flex-col md:flex-row font-sans text-slate-900">
       
       {/* NAVBAR MÓVIL */}
       <header className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
@@ -74,12 +73,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full shadow-2xl">
+          
           {/* Logo / Brand Area */}
           <div className="p-6 border-b border-slate-800 hidden md:block">
             <h2 className="text-xl font-black tracking-tighter text-blue-500 uppercase truncate">
               {brandName}
             </h2>
-            <p className="text-[10px] text-slate-500 font-bold tracking-widest mt-1">SISTEMA INTEGRAL</p>
+            <p className="text-[10px] text-slate-500 font-bold tracking-widest mt-1 uppercase">Sistema Integral</p>
           </div>
 
           {/* Navegación por Roles */}
@@ -88,7 +88,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span>🏠</span> Inicio
             </Link>
             
-            {/* ROL: ADMIN KODA (SaaS Global) */}
+            {/* 1. ROL: ADMINISTRADOR DE SISTEMA (SaaS Master) */}
             {profile?.role === 'admin_koda' && (
               <>
                 <div className="pt-4 pb-2 text-[10px] uppercase text-slate-500 font-bold px-3 tracking-widest">SaaS Master</div>
@@ -98,38 +98,70 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </>
             )}
 
-            {/* ROL: DIRECTIVO / PRECEPTOR (Gestión de la Escuela) */}
-            {(profile?.role === 'directivo' || profile?.role === 'preceptor') && profile?.school_id && (
+            {/* 2. ROL: DIRECTIVO (Gestión de Institución) */}
+            {profile?.role === 'directivo' && profile?.school_id && (
               <>
-                <div className="pt-4 pb-2 text-[10px] uppercase text-slate-500 font-bold px-3 tracking-widest">Administración</div>
+                <div className="pt-4 pb-2 text-[10px] uppercase text-slate-500 font-bold px-3 tracking-widest">Dirección</div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/cursos" className={linkStyle}>
                   <span>🏫</span> Gestión Cursos
                 </Link>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos" className={linkStyle}>
-                  <span>👥</span> Gestión Alumnos
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/personal" className={linkStyle}>
+                  <span>👨‍🏫</span> Gestión Personal
                 </Link>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className={linkStyle}>
-                  <span>📝</span> Tomar Asistencia
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/libretas" className={linkStyle}>
+                  <span>📄</span> Carga de Libretas
+                </Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/estadisticas" className={linkStyle}>
+                  <span>📊</span> Estadísticas
                 </Link>
               </>
             )}
 
-            {/* ROL: PADRE */}
-            {profile?.role === 'padre' && profile?.school_id && (
-              <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={linkStyle}>
-                <span>👨‍🎓</span> Mis Hijos
-              </Link>
+            {/* 3. ROL: PRECEPTOR (Operación Diaria) */}
+            {profile?.role === 'preceptor' && profile?.school_id && (
+              <>
+                <div className="pt-4 pb-2 text-[10px] uppercase text-slate-500 font-bold px-3 tracking-widest">Preceptoría</div>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className={linkStyle}>
+                  <span>📝</span> Tomar Asistencia
+                </Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos" className={linkStyle}>
+                  <span>👥</span> Gestión Alumnos
+                </Link>
+              </>
             )}
 
-            {/* Estado Pendiente (Sin Escuela) */}
+            {/* 4. ROL: DOCENTE (Profesor) */}
+            {profile?.role === 'docente' && profile?.school_id && (
+              <>
+                <div className="pt-4 pb-2 text-[10px] uppercase text-slate-500 font-bold px-3 tracking-widest">Docencia</div>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/docente/materias" className={linkStyle}>
+                  <span>📓</span> Mis Materias
+                </Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className={linkStyle}>
+                  <span>📝</span> Asistencia
+                </Link>
+              </>
+            )}
+
+            {/* 5. ROL: PADRE / TUTOR */}
+            {profile?.role === 'padre' && profile?.school_id && (
+              <>
+                <div className="pt-4 pb-2 text-[10px] uppercase text-slate-500 font-bold px-3 tracking-widest">Familia</div>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={linkStyle}>
+                  <span>👨‍🎓</span> Mis Hijos
+                </Link>
+              </>
+            )}
+
+            {/* ESTADO PENDIENTE */}
             {!profile?.school_id && profile?.role !== 'admin_koda' && (
                <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                 <p className="text-[10px] text-amber-500 font-bold uppercase mb-1 tracking-tighter">Estado Pendiente</p>
-                 <p className="text-xs text-amber-200/70 leading-tight italic">Esperando vinculación con institución...</p>
+                 <p className="text-[10px] text-amber-500 font-bold uppercase mb-1 tracking-tighter">Acceso Restringido</p>
+                 <p className="text-xs text-amber-200/70 leading-tight italic font-medium">Cuenta pendiente de vinculación institucional.</p>
                </div>
             )}
 
-            {/* COMUNICADOS (Para todos con escuela) */}
+            {/* COMUNICADOS (Común para todos los vinculados a una escuela) */}
             {profile?.school_id && (
               <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={linkStyle}>
                 <span>📩</span> Comunicados
@@ -143,7 +175,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-sm font-bold truncate text-slate-200">
                 {profile?.full_name || user?.email?.split('@')[0]}
               </p>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 text-slate-900">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 <p className="text-[10px] uppercase tracking-widest text-blue-400 font-black">
                   {profile?.role || 'USUARIO'}
@@ -154,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={handleSignOut}
               className="w-full py-2.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl border border-red-500/20 transition-all font-bold flex items-center justify-center gap-2"
             >
-              🚪 Cerrar Sesión
+              <span>🚪</span> Cerrar Sesión
             </button>
           </div>
         </div>
