@@ -7,6 +7,7 @@ export default function GestionPersonal() {
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<'preceptor' | 'docente'>('docente')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -23,9 +24,9 @@ export default function GestionPersonal() {
 
     if (!profile?.school_id) return
 
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
+    const { data } = await supfrom('profiles')
+abase
+      .      .select('*')
       .eq('school_id', profile.school_id)
       .in('role', ['preceptor', 'docente'])
       .order('full_name', { ascending: true })
@@ -55,7 +56,8 @@ export default function GestionPersonal() {
         email,
         fullName,
         role,
-        schoolId: directorProfile.school_id
+        schoolId: directorProfile.school_id,
+        password
       })
     })
 
@@ -64,9 +66,10 @@ export default function GestionPersonal() {
     if (result.error) {
       setError(result.error)
     } else {
-      setSuccess(`✅ Invitación enviada a ${email}. El usuario recibirá un email para crear su contraseña.`)
+      setSuccess(`${result.message}`)
       setEmail('')
       setFullName('')
+      setPassword('')
       fetchPersonal()
     }
 
@@ -79,7 +82,7 @@ export default function GestionPersonal() {
 
       <form onSubmit={handleCreate} className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="md:col-span-2 lg:col-span-4 text-sm font-bold text-blue-600 border-b pb-2 uppercase tracking-wider mb-2">
-          Invitar Nuevo Miembro
+          Crear Nuevo Miembro
         </div>
 
         <div>
@@ -107,6 +110,19 @@ export default function GestionPersonal() {
         </div>
 
         <div>
+          <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Contraseña Provisoria</label>
+          <input 
+            type="text" 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            className="w-full mt-1 p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" 
+            placeholder="Mínimo 6 caracteres" 
+            minLength={6}
+            required 
+          />
+        </div>
+
+        <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Rol</label>
           <select 
             value={role} 
@@ -123,7 +139,7 @@ export default function GestionPersonal() {
             disabled={loading}
             className="w-full md:w-auto bg-blue-600 text-white py-3 px-8 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95 disabled:opacity-50"
           >
-            {loading ? 'Enviando invitación...' : '✉️ Enviar Invitación'}
+            {loading ? 'Creando...' : '➕ Crear Usuario'}
           </button>
         </div>
 

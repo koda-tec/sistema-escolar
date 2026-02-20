@@ -3,47 +3,47 @@ import { supabaseAdmin } from '@/app/utils/supabase/admin'
 
 export async function POST(request: Request) {
   try {
-    const { email, fullName, role, schoolId } = await request.json()
+    const { email, fullName, role, schoolId, password } = await request.json()
 
-    if (!email || !fullName || !role || !schoolId) {
+    if (!email || !fullName || !role || !schoolId || !password) {
       return NextResponse.json(
         { error: 'Faltan datos requeridos' },
         { status: 400 }
       )
     }
 
-    // Invitar usuario usando el cliente de admin
-    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    // Crear usuario directamente con contraseña
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      {
-        data: {
-          full_name: fullName,
-        },
-      redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/callback`,
-          }
-    )
+      email_confirm: true, // El email queda confirmado automáticamente
+      password,
+      user_metadata: {
+        full_name: fullName
+      }
+    })
 
-    if (error) {
-      console.error('Error invitando usuario:', error)
+    if (authError) {
+      console.error('Error creando usuario:', authError)
       return NextResponse.json(
-        { error: error.message },
+        { error: authError.message },
         { status: 400 }
       )
     }
 
-    // Actualizar el perfil con el rol y school_id
-    if (data.user) {
+    // Crear el perfil con el rol y school_id
+    if (authData.user) {
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
-        .update({
+        .insert({
+          id: authData.user.id,
+          email: email,
+          full_name: fullName,
           role: role,
-          school_id: schoolId,
-          full_name: fullName
+          school_id: schoolId
         })
-        .eq('id', data.user.id)
 
       if (profileError) {
-        console.error('Error actualizando perfil:', profileError)
+        console.error('Error creando perfil:', profileError)
         return NextResponse.json(
           { error: profileError.message },
           { status: 400 }
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `Invitación enviada a ${email}` 
+      message: `✅ ${role === 'docente' ? 'Profesor' : 'Preceptor'} creado correctamente. Su contraseña provisional es: ${password}`
     })
 
   } catch (error: any) {
