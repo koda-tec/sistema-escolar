@@ -28,8 +28,8 @@ export default function SuperAdminPage() {
       <form onSubmit={createSchool} className="bg-white p-8 rounded-3xl shadow-xl border border-blue-100 space-y-4">
         <h2 className="font-bold text-blue-600 uppercase text-xs tracking-widest">Registrar Nueva Escuela</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la Institución" className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
-          <input value={slug} onChange={e => setSlug(e.target.value)} placeholder="slug-de-la-escuela" className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la Institución" className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900" required />
+          <input value={slug} onChange={e => setSlug(e.target.value)} placeholder="slug-de-la-escuela" className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900" required />
         </div>
         <button className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
           Activar Institución
