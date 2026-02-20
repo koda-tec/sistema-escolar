@@ -45,31 +45,37 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
               <span className="text-xs text-slate-500 font-medium tracking-tight">DNI: {s.dni}</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
+           <div className="flex items-center gap-2">
+            <button
                 onClick={() => handleStatus(s.id, 'presente')}
-                className={`flex-1 md:flex-none px-5 py-3 rounded-2xl font-black text-xs transition-all ${
-                  attendance[s.id] === 'presente' ? 'bg-green-500 text-white shadow-lg shadow-green-200 scale-105' : 'bg-slate-100 text-slate-400'
+                className={`flex-1 md:flex-none w-10 h-10 md:w-12 md:h-12 rounded-xl font-black text-sm transition-all ${
+                attendance[s.id] === 'presente' 
+                    ? 'bg-green-500 text-white shadow-lg shadow-green-200 scale-110' 
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                 }`}
-              >
+            >
                 P
-              </button>
-              <button
+            </button>
+            <button
                 onClick={() => handleStatus(s.id, 'ausente')}
-                className={`flex-1 md:flex-none px-5 py-3 rounded-2xl font-black text-xs transition-all ${
-                  attendance[s.id] === 'ausente' ? 'bg-red-500 text-white shadow-lg shadow-red-200 scale-105' : 'bg-slate-100 text-slate-400'
+                className={`flex-1 md:flex-none w-10 h-10 md:w-12 md:h-12 rounded-xl font-black text-sm transition-all ${
+                attendance[s.id] === 'ausente' 
+                    ? 'bg-red-500 text-white shadow-lg shadow-red-200 scale-110' 
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                 }`}
-              >
+            >
                 A
-              </button>
-              <button
+            </button>
+            <button
                 onClick={() => handleStatus(s.id, 'justificado')}
-                className={`flex-1 md:flex-none px-5 py-3 rounded-2xl font-black text-xs transition-all ${
-                  attendance[s.id] === 'justificado' ? 'bg-amber-500 text-white shadow-lg shadow-amber-200 scale-105' : 'bg-slate-100 text-slate-400'
+                className={`flex-1 md:flex-none w-10 h-10 md:w-12 md:h-12 rounded-xl font-black text-sm transition-all ${
+                attendance[s.id] === 'justificado' 
+                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-200 scale-110' 
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                 }`}
-              >
+            >
                 J
-              </button>
+            </button>
             </div>
           </div>
         ))}
