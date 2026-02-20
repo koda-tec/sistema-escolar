@@ -59,6 +59,14 @@ export default function RegisterPage() {
     }
   }
 
+  const handleGoogleLogin = async () => {
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  })
+}
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
       <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-2xl border border-white space-y-6">
@@ -99,6 +107,14 @@ export default function RegisterPage() {
             {loading ? 'Procesando...' : 'Registrarse'}
           </button>
         </form>
+
+        <button 
+        onClick={handleGoogleLogin}
+        className="w-full flex items-center justify-center gap-2 border border-slate-200 py-3 rounded-xl hover:bg-slate-50 transition-all font-medium mt-4"
+        >
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
+        Continuar con Google
+        </button>
 
         <p className="text-center text-sm text-slate-600">
           ¿Ya tienes cuenta? <Link href="/login" className="text-blue-600 font-bold">Inicia Sesión</Link>

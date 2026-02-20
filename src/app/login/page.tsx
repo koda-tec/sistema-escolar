@@ -26,6 +26,16 @@ export default function LoginPage() {
     }
   }
 
+const handleGoogleLogin = async () => {
+  const supabase = createClient() // Usa tu función createClient()
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  })
+}
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 relative overflow-hidden">
       {/* Decoración de fondo */}
@@ -78,6 +88,21 @@ export default function LoginPage() {
               {loading ? 'Validando...' : 'Iniciar Sesión'}
             </button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t"></span></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-500">O continúa con</span></div>
+          </div>
+
+          <button 
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full flex items-center justify-center gap-3 border border-slate-200 py-3 rounded-xl hover:bg-slate-50 transition-all font-semibold"
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
+            Iniciar sesión con Google
+          </button>
+
           <div className="mt-4 text-center text-sm text-gray-600">
           <p>
             ¿No tienes cuenta?{' '}
