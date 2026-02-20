@@ -19,8 +19,8 @@ export async function POST(request: Request) {
         data: {
           full_name: fullName,
         },
-        redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/callback`,
-      }
+      redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/callback`,
+          }
     )
 
     if (error) {
