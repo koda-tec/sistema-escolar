@@ -33,7 +33,7 @@ export default function LandingPage() {
           <div className="relative max-w-5xl mx-auto">
             <div className="absolute -inset-1 bg-linear-to-r from-blue-600 to-cyan-500 rounded-2xl blur opacity-20"></div>
             <img 
-              src="https://images.unsplash.com/photo-1523050853063-9158946122a2?q=80&w=1200" 
+              src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?q=80&w=1000" 
               alt="Escuela Digital" 
               className="relative w-full rounded-2xl shadow-2xl border border-white object-cover h-300px md:h-500px"
             />
