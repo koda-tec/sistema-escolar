@@ -41,17 +41,17 @@ export default function GestionCursos() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Gestión de Cursos</h1>
+      <h1 className="text-2xl font-bold text-slate-900">Gestión de Cursos</h1>
       
       {/* Formulario de Creación */}
       <form onSubmit={addCourse} className="bg-white p-6 rounded-2xl shadow-sm border flex gap-4 items-end">
         <div className="flex-1">
-          <label className="text-xs font-bold text-slate-500 uppercase">Año</label>
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: 1er Año" className="w-full p-2 border rounded-xl" required />
+          <label className="text-xs font-bold text-slate-900 uppercase">Año</label>
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: 1er Año" className="w-full p-2 border rounded-xl text-slate-900" required />
         </div>
         <div className="w-32">
-          <label className="text-xs font-bold text-slate-500 uppercase">División</label>
-          <input value={newSection} onChange={e => setNewSection(e.target.value)} placeholder="Ej: A" className="w-full p-2 border rounded-xl" required />
+          <label className="text-xs font-bold text-slate-900 uppercase">División</label>
+          <input value={newSection} onChange={e => setNewSection(e.target.value)} placeholder="Ej: A" className="w-full p-2 border rounded-xl text-slate-900" required />
         </div>
         <button className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold">Crear Curso</button>
       </form>

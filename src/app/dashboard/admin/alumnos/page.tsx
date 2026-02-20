@@ -66,26 +66,26 @@ export default function GestionAlumnos() {
         <div className="md:col-span-2 text-sm font-bold text-blue-600 border-b pb-2 uppercase tracking-wider">Nuevo Ingreso</div>
         
         <div>
-          <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Nombre Completo del Alumno</label>
-          <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none" placeholder="Apellido y Nombre" required />
+          <label className="text-[10px] font-bold text-slate-900 uppercase ml-1">Nombre Completo del Alumno</label>
+          <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" placeholder="Apellido y Nombre" required />
         </div>
 
         <div>
-          <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">DNI / Legajo</label>
-          <input value={dni} onChange={e => setDni(e.target.value)} className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none" placeholder="Sin puntos" required />
+          <label className="text-[10px] font-bold text-slate-900 uppercase ml-1">DNI / Legajo</label>
+          <input value={dni} onChange={e => setDni(e.target.value)} className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" placeholder="Sin puntos" required />
         </div>
 
         <div>
-          <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Asignar Curso</label>
-          <select value={courseId} onChange={e => setCourseId(e.target.value)} className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none" required>
+          <label className="text-[10px] font-bold text-slate-900 uppercase ml-1">Asignar Curso</label>
+          <select value={courseId} onChange={e => setCourseId(e.target.value)} className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" required>
             <option value="">Seleccione...</option>
             {courses.map(c => <option key={c.id} value={c.id}>{c.name} "{c.section}"</option>)}
           </select>
         </div>
 
         <div>
-          <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Vincular Padre / Tutor</label>
-          <select value={parentId} onChange={e => setParentId(e.target.value)} className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none" required>
+          <label className="text-[10px] font-bold text-slate-900 uppercase ml-1">Vincular Padre / Tutor</label>
+          <select value={parentId} onChange={e => setParentId(e.target.value)} className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" required>
             <option value="">Seleccione un usuario...</option>
             {parents.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.role})</option>)}
           </select>
@@ -99,7 +99,7 @@ export default function GestionAlumnos() {
       {/* Lista de Alumnos Registrados */}
       <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-slate-50 border-b text-[10px] uppercase text-slate-400 font-black">
+          <thead className="bg-slate-50 border-b text-[10px] uppercase text-slate-900 font-black">
             <tr>
               <th className="p-4">Alumno</th>
               <th className="p-4">Curso</th>
