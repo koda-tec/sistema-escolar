@@ -5,6 +5,9 @@ import { createClient } from '@/app/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+// Estilo común para los enlaces del menú para evitar repetición
+const linkStyle = "flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition-all text-sm font-medium text-slate-300 hover:text-white"
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -16,32 +19,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const getData = async () => {
-      // 1. Obtener el usuario de la sesión
       const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError || !user) {
-        return router.push('/login')
-      }
-      
+      if (authError || !user) return router.push('/login')
       setUser(user)
 
-      // 2. Obtener perfil y datos de la escuela vinculada (Lógica SaaS)
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          schools (
-            name,
-            logo_url
-          )
-        `)
+        .select('*, schools(name, logo_url)')
         .eq('id', user.id)
         .maybeSingle()
 
       setProfile(profileData)
       setLoading(false)
     }
-
     getData()
   }, [router, supabase])
 
@@ -50,19 +40,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  // Nombre dinámico según la escuela o nombre del sistema
   const brandName = profile?.schools?.name || "KUADERNO"
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 font-sans">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600"></div>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#f1f5f9] flex flex-col md:flex-row font-sans">
       
       {/* NAVBAR MÓVIL */}
       <header className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
@@ -89,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-col h-full shadow-2xl">
           {/* Logo / Brand Area */}
           <div className="p-6 border-b border-slate-800 hidden md:block">
-            <h2 className="text-xl font-black tracking-tighter text-blue-500 uppercase">
+            <h2 className="text-xl font-black tracking-tighter text-blue-500 uppercase truncate">
               {brandName}
             </h2>
             <p className="text-[10px] text-slate-500 font-bold tracking-widest mt-1">SISTEMA INTEGRAL</p>
@@ -97,39 +84,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Navegación por Roles */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            <Link 
-              onClick={() => setSidebarOpen(false)} 
-              href="/dashboard" 
-              className="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition-all text-sm font-medium text-slate-300 hover:text-white"
-            >
+            <Link onClick={() => setSidebarOpen(false)} href="/dashboard" className={linkStyle}>
               <span>🏠</span> Inicio
             </Link>
             
-            {/* Si NO tiene escuela vinculada (Estado Pendiente SaaS) */}
-            {!profile?.school_id && (
-               <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                 <p className="text-[10px] text-amber-500 font-bold uppercase mb-1">Estado</p>
-                 <p className="text-xs text-amber-200/70 leading-tight">Esperando vinculación con institución...</p>
-               </div>
+            {/* ROL: ADMIN KODA (SaaS Global) */}
+            {profile?.role === 'admin_koda' && (
+              <>
+                <div className="pt-4 pb-2 text-[10px] uppercase text-slate-500 font-bold px-3 tracking-widest">SaaS Master</div>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin-koda" className={linkStyle}>
+                  <span>🏢</span> Gestión Escuelas
+                </Link>
+              </>
             )}
 
-            {/* Links para PADRES */}
+            {/* ROL: DIRECTIVO / PRECEPTOR (Gestión de la Escuela) */}
+            {(profile?.role === 'directivo' || profile?.role === 'preceptor') && profile?.school_id && (
+              <>
+                <div className="pt-4 pb-2 text-[10px] uppercase text-slate-500 font-bold px-3 tracking-widest">Administración</div>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/cursos" className={linkStyle}>
+                  <span>🏫</span> Gestión Cursos
+                </Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos" className={linkStyle}>
+                  <span>👥</span> Gestión Alumnos
+                </Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className={linkStyle}>
+                  <span>📝</span> Tomar Asistencia
+                </Link>
+              </>
+            )}
+
+            {/* ROL: PADRE */}
             {profile?.role === 'padre' && profile?.school_id && (
-              <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition-all text-sm">
+              <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={linkStyle}>
                 <span>👨‍🎓</span> Mis Hijos
               </Link>
             )}
 
-            {/* Links para PRECEPTORES */}
-            {(profile?.role === 'preceptor' || profile?.role === 'directivo') && profile?.school_id && (
-              <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition-all text-sm">
-                <span>📝</span> Tomar Asistencia
-              </Link>
+            {/* Estado Pendiente (Sin Escuela) */}
+            {!profile?.school_id && profile?.role !== 'admin_koda' && (
+               <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                 <p className="text-[10px] text-amber-500 font-bold uppercase mb-1 tracking-tighter">Estado Pendiente</p>
+                 <p className="text-xs text-amber-200/70 leading-tight italic">Esperando vinculación con institución...</p>
+               </div>
             )}
 
-            {/* Link para COMUNICADOS (Común a todos con escuela) */}
+            {/* COMUNICADOS (Para todos con escuela) */}
             {profile?.school_id && (
-              <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition-all text-sm">
+              <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={linkStyle}>
                 <span>📩</span> Comunicados
               </Link>
             )}
@@ -152,7 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={handleSignOut}
               className="w-full py-2.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl border border-red-500/20 transition-all font-bold flex items-center justify-center gap-2"
             >
-              <span>🚪</span> Cerrar Sesión
+              🚪 Cerrar Sesión
             </button>
           </div>
         </div>
