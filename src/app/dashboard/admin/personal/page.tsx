@@ -24,9 +24,9 @@ export default function GestionPersonal() {
 
     if (!profile?.school_id) return
 
-    const { data } = await supfrom('profiles')
-abase
-      .      .select('*')
+   const { data } = await supabase
+      .from('profiles')
+      .select('*')
       .eq('school_id', profile.school_id)
       .in('role', ['preceptor', 'docente'])
       .order('full_name', { ascending: true })
