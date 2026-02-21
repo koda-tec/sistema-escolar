@@ -36,10 +36,15 @@ export default function LoginPage() {
         .eq('id', data.user.id)
         .single()
 
+      // 📌 Console.log para debug
+      console.log('Profile:', profile)
+
       // Solo redirigir si es docente/preceptor Y debe cambiar contraseña
       if ((profile?.role === 'docente' || profile?.role === 'preceptor') && profile?.must_change_password) {
+        console.log('➡️ Redirigiendo a cambiar contraseña')
         router.push('/dashboard/perfil/cambiar-password')
       } else {
+        console.log('➡️ Redirigiendo a dashboard')
         router.push('/dashboard')
       }
     } else {
