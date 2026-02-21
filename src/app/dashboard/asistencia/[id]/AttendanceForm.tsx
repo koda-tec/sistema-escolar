@@ -17,24 +17,30 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
     setAttendance(prev => ({ ...prev, [studentId]: status }))
   }
 
-  const save = async () => {
-    setLoading(true)
-    const records = Object.entries(attendance).map(([studentId, status]) => ({
-      student_id: studentId,
-      status,
-      date: new Date().toISOString().split('T')[0],
-    }))
+const save = async () => {
+  setLoading(true);
+  
+  // Generamos el array de registros
+  const records = Object.entries(attendance).map(([studentId, status]) => ({
+    student_id: studentId,
+    status: status,
+    date: new Date().toISOString().split('T')[0]
+  }));
 
-    const { error } = await supabase.from('attendance').insert(records)
+  // Intentamos la inserción
+  const { data, error } = await supabase
+    .from('attendance')
+    .insert(records);
 
-    if (error) {
-      showToast('Error al guardar: ' + error.message, 'error')
-    } else {
-      showToast('¡Asistencia guardada con éxito!', 'success')
-      router.push('/dashboard/asistencia')
-    }
-    setLoading(false)
+  if (error) {
+    console.error("Detalle del error:", error);
+    showToast("Error 403: No tienes permiso para guardar asistencia", "error");
+  } else {
+    showToast("Asistencia guardada correctamente", "success");
+    router.push('/dashboard/asistencia');
   }
+  setLoading(false);
+};
 
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
