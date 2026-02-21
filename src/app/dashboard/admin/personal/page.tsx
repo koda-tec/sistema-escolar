@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
+import { useToast } from '@/app/components/Toast'
 
 export default function GestionPersonal() {
   const [personal, setPersonal] = useState<any[]>([])
@@ -9,9 +10,8 @@ export default function GestionPersonal() {
   const [role, setRole] = useState<'preceptor' | 'docente'>('docente')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   
+  const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function GestionPersonal() {
 
     if (!profile?.school_id) return
 
-   const { data } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('school_id', profile.school_id)
@@ -37,14 +37,12 @@ export default function GestionPersonal() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setError(null)
-    setSuccess(null)
 
     const { data: { user } } = await supabase.auth.getUser()
     const { data: directorProfile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
 
     if (!directorProfile?.school_id) {
-      setError('No se pudo identificar la escuela')
+      showToast('No se pudo identificar la escuela', 'error')
       setLoading(false)
       return
     }
@@ -64,9 +62,9 @@ export default function GestionPersonal() {
     const result = await response.json()
 
     if (result.error) {
-      setError(result.error)
+      showToast(result.error, 'error')
     } else {
-      setSuccess(`${result.message}`)
+      showToast(result.message, 'success')
       setEmail('')
       setFullName('')
       setPassword('')
@@ -142,18 +140,6 @@ export default function GestionPersonal() {
             {loading ? 'Creando...' : '➕ Crear Usuario'}
           </button>
         </div>
-
-        {error && (
-          <div className="md:col-span-2 lg:col-span-4 bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium">
-            ⚠️ {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="md:col-span-2 lg:col-span-4 bg-green-50 text-green-600 p-3 rounded-xl text-sm font-medium">
-            {success}
-          </div>
-        )}
       </form>
 
       <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">

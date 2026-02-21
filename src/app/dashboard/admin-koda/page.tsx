@@ -1,11 +1,15 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
+import { useToast } from '@/app/components/Toast'
 
 export default function SuperAdminPage() {
   const [schools, setSchools] = useState<any[]>([])
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
+  const [loading, setLoading] = useState(false)
+  
+  const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => { fetchSchools() }, [])
@@ -17,8 +21,19 @@ export default function SuperAdminPage() {
 
   async function createSchool(e: React.FormEvent) {
     e.preventDefault()
-    await supabase.from('schools').insert({ name, slug })
-    setName(''); setSlug(''); fetchSchools()
+    setLoading(true)
+    
+    const { error } = await supabase.from('schools').insert({ name, slug })
+    
+    if (error) {
+      showToast('Error: ' + error.message, 'error')
+    } else {
+      showToast('Escuela creada correctamente', 'success')
+      setName('')
+      setSlug('')
+      fetchSchools()
+    }
+    setLoading(false)
   }
 
   return (
@@ -31,8 +46,8 @@ export default function SuperAdminPage() {
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la Institución" className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900" required />
           <input value={slug} onChange={e => setSlug(e.target.value)} placeholder="slug-de-la-escuela" className="p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900" required />
         </div>
-        <button className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
-          Activar Institución
+        <button disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+          {loading ? 'Creando...' : 'Activar Institución'}
         </button>
       </form>
 

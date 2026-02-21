@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/app/components/Toast'
 
 export default function AttendanceForm({ students, courseId }: { students: any[], courseId: string }) {
   const [attendance, setAttendance] = useState<Record<string, string>>(
@@ -10,6 +11,7 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
   const router = useRouter()
+  const { showToast } = useToast()
 
   const handleStatus = (studentId: string, status: string) => {
     setAttendance(prev => ({ ...prev, [studentId]: status }))
@@ -21,15 +23,14 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
       student_id: studentId,
       status,
       date: new Date().toISOString().split('T')[0],
-      // school_id se podria agregar aqui tambien si quieres mas seguridad
     }))
 
     const { error } = await supabase.from('attendance').insert(records)
 
     if (error) {
-      alert("Error al guardar: " + error.message)
+      showToast('Error al guardar: ' + error.message, 'error')
     } else {
-      alert("¡Asistencia guardada con éxito!")
+      showToast('¡Asistencia guardada con éxito!', 'success')
       router.push('/dashboard/asistencia')
     }
     setLoading(false)

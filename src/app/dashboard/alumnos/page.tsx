@@ -1,12 +1,16 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
+import { useToast } from '@/app/components/Toast'
 
 export default function GestionAlumnos() {
   const [students, setStudents] = useState<any[]>([])
   const [courses, setCourses] = useState<any[]>([])
   const [parents, setParents] = useState<any[]>([])
   const [form, setForm] = useState({ fullName: '', dni: '', courseId: '', parentId: '' })
+  const [loading, setLoading] = useState(false)
+  
+  const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => { loadData() }, [])
@@ -15,21 +19,20 @@ export default function GestionAlumnos() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).single()
 
-    // Traer Cursos de la escuela
     const { data: c } = await supabase.from('courses').select('*').eq('school_id', profile?.school_id)
     setCourses(c || [])
 
-    // Traer todos los Padres registrados en el sistema para vincularlos
     const { data: p } = await supabase.from('profiles').select('*').eq('role', 'padre')
     setParents(p || [])
 
-    // Traer Alumnos actuales con sus relaciones
     const { data: s } = await supabase.from('students').select('*, courses(name, section), profiles!parent_id(full_name)').eq('school_id', profile?.school_id)
     setStudents(s || [])
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setLoading(true)
+    
     const { data: { user } } = await supabase.auth.getUser()
     const { data: prof } = await supabase.from('profiles').select('school_id').eq('id', user?.id).single()
 
@@ -41,11 +44,14 @@ export default function GestionAlumnos() {
       school_id: prof?.school_id
     })
 
-    if (error) alert("Error: " + error.message)
-    else {
+    if (error) {
+      showToast('Error: ' + error.message, 'error')
+    } else {
+      showToast('Alumno creado correctamente', 'success')
       setForm({ fullName: '', dni: '', courseId: '', parentId: '' })
       loadData()
     }
+    setLoading(false)
   }
 
   return (
@@ -68,8 +74,8 @@ export default function GestionAlumnos() {
           {parents.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
         </select>
 
-        <button className="md:col-span-2 bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-all shadow-lg">
-          Finalizar Inscripción
+        <button disabled={loading} className="md:col-span-2 bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-all shadow-lg">
+          {loading ? 'Guardando...' : 'Finalizar Inscripción'}
         </button>
       </form>
 

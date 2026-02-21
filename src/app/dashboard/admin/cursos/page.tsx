@@ -1,12 +1,15 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
+import { useToast } from '@/app/components/Toast'
 
 export default function GestionCursos() {
   const [courses, setCourses] = useState<any[]>([])
   const [newName, setNewName] = useState('')
   const [newSection, setNewSection] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => {
@@ -30,15 +33,20 @@ export default function GestionCursos() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
 
-    await supabase.from('courses').insert({
+    const { error } = await supabase.from('courses').insert({
       name: newName,
       section: newSection,
       school_id: profile?.school_id
     })
     
-    setNewName('')
-    setNewSection('')
-    await fetchCourses()
+    if (error) {
+      showToast('Error: ' + error.message, 'error')
+    } else {
+      showToast('Curso creado correctamente', 'success')
+      setNewName('')
+      setNewSection('')
+      fetchCourses()
+    }
     setLoading(false)
   }
 
@@ -46,7 +54,6 @@ export default function GestionCursos() {
     <div className="space-y-6 md:space-y-8">
       <h1 className="text-2xl font-bold text-slate-900">Gestión de Cursos</h1>
       
-      {/* Formulario de Creación Responsivo */}
       <form onSubmit={addCourse} className="bg-white p-6 rounded-3xl shadow-sm border grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
         <div className="md:col-span-2">
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Año / Grado</label>
@@ -61,7 +68,6 @@ export default function GestionCursos() {
         </button>
       </form>
 
-      {/* Lista de Cursos en Grid Responsivo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {courses.map(c => (
           <div key={c.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-300 transition-all group">
