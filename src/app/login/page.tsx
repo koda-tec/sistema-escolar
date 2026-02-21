@@ -60,9 +60,9 @@ export default function LoginPage() {
       return
     }
 
-   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: `${window.location.origin}/olvide-contrasena`,
-})
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/olvide-contrasena`,
+    })
 
     if (error) {
       toast.error('Error al enviar el email: ' + error.message)
