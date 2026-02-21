@@ -108,9 +108,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/personal" className={linkStyle}>
                   <span>👨‍🏫</span> Gestión Personal
                 </Link>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/libretas" className={linkStyle}>
-                  <span>📄</span> Carga de Libretas
-                </Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/estadisticas" className={linkStyle}>
                   <span>📊</span> Estadísticas
                 </Link>
@@ -126,6 +123,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos" className={linkStyle}>
                   <span>👥</span> Gestión Alumnos
+                </Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/libretas" className={linkStyle}>
+                  <span>📄</span> Carga de Libretas
                 </Link>
               </>
             )}
