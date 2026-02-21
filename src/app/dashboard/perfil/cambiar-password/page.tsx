@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { validatePassword } from '@/app/utils/passwordValidator'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 export default function CambiarPassword() {
   const [nuevaPassword, setNuevaPassword] = useState('')
@@ -10,6 +11,7 @@ export default function CambiarPassword() {
   const [loading, setLoading] = useState(false)
   
   const supabase = createClient()
+  const router = useRouter()
 
   async function handleCambiarPassword(e: React.FormEvent) {
     e.preventDefault()
@@ -39,7 +41,7 @@ export default function CambiarPassword() {
       return
     }
 
-    // Llamar a la API con el cliente admin (sin problemas de RLS)
+    // Llamar a la API con el cliente admin
     const response = await fetch('/api/cambiar-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -53,16 +55,33 @@ export default function CambiarPassword() {
 
     if (result.error) {
       toast.error(result.error)
-    } else {
-      toast.success('¡Contraseña cambiada correctamente!')
-      setNuevaPassword('')
-      setConfirmarPassword('')
-      
-      // Redirigir al dashboard
-      setTimeout(() => {
-        window.location.href = '/dashboard'
-      }, 1500)
+      setLoading(false)
+      return
     }
+
+    toast.success('¡Contraseña cambiada correctamente!')
+    setNuevaPassword('')
+    setConfirmarPassword('')
+    
+    // Esperar un momento y luego refrescar la sesión
+    setTimeout(async () => {
+      try {
+        // Forzar refresh de la sesión para mantener al usuario logueado
+        const { error: refreshError } = await supabase.auth.refreshSession()
+        
+        if (refreshError) {
+          console.error('Error refresh session:', refreshError)
+          // Si falla, redirigir al login de todos modos
+          router.push('/login')
+        } else {
+          // Éxito: redirigir al dashboard manteniendo la sesión
+          router.push('/dashboard')
+        }
+      } catch (err) {
+        console.error('Error:', err)
+        router.push('/login')
+      }
+    }, 1500)
 
     setLoading(false)
   }
