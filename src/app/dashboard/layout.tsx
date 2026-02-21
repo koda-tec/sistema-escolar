@@ -137,9 +137,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/docente/materias" className={linkStyle}>
                   <span>📓</span> Mis Materias
                 </Link>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className={linkStyle}>
-                  <span>📝</span> Asistencia
-                </Link>
               </>
             )}
 
