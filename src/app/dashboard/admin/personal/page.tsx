@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
-import { useToast } from '@/app/components/Toast'
+import toast from 'react-hot-toast'
 
 export default function GestionPersonal() {
   const [personal, setPersonal] = useState<any[]>([])
@@ -11,7 +11,6 @@ export default function GestionPersonal() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   
-  const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export default function GestionPersonal() {
     const { data: directorProfile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
 
     if (!directorProfile?.school_id) {
-      showToast('No se pudo identificar la escuela', 'error')
+      toast.error('No se pudo identificar la escuela')
       setLoading(false)
       return
     }
@@ -62,9 +61,9 @@ export default function GestionPersonal() {
     const result = await response.json()
 
     if (result.error) {
-      showToast(result.error, 'error')
+      toast.error(result.error)
     } else {
-      showToast(result.message, 'success')
+      toast.success(result.message)
       setEmail('')
       setFullName('')
       setPassword('')

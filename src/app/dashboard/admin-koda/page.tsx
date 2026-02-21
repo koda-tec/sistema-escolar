@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
-import { useToast } from '@/app/components/Toast'
+import toast from 'react-hot-toast'
 
 export default function SuperAdminPage() {
   const [schools, setSchools] = useState<any[]>([])
@@ -9,7 +9,6 @@ export default function SuperAdminPage() {
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(false)
   
-  const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => { fetchSchools() }, [])
@@ -26,9 +25,9 @@ export default function SuperAdminPage() {
     const { error } = await supabase.from('schools').insert({ name, slug })
     
     if (error) {
-      showToast('Error: ' + error.message, 'error')
+      toast.error('Error: ' + error.message)
     } else {
-      showToast('Escuela creada correctamente', 'success')
+      toast.success('Escuela creada correctamente')
       setName('')
       setSlug('')
       fetchSchools()

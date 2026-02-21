@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
-import { useToast } from '@/app/components/Toast'
+import toast from 'react-hot-toast'
 
 export default function GestionAlumnos() {
   const [students, setStudents] = useState<any[]>([])
@@ -10,7 +10,6 @@ export default function GestionAlumnos() {
   const [form, setForm] = useState({ fullName: '', dni: '', courseId: '', parentId: '' })
   const [loading, setLoading] = useState(false)
   
-  const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => { loadData() }, [])
@@ -45,9 +44,9 @@ export default function GestionAlumnos() {
     })
 
     if (error) {
-      showToast('Error: ' + error.message, 'error')
+      toast.error('Error: ' + error.message)
     } else {
-      showToast('Alumno creado correctamente', 'success')
+      toast.success('Alumno creado correctamente')
       setForm({ fullName: '', dni: '', courseId: '', parentId: '' })
       loadData()
     }

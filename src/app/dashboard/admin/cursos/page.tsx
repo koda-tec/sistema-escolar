@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
-import { useToast } from '@/app/components/Toast'
+import toast from 'react-hot-toast'
 
 export default function GestionCursos() {
   const [courses, setCourses] = useState<any[]>([])
@@ -9,7 +9,6 @@ export default function GestionCursos() {
   const [newSection, setNewSection] = useState('')
   const [loading, setLoading] = useState(false)
   
-  const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => {
@@ -40,9 +39,9 @@ export default function GestionCursos() {
     })
     
     if (error) {
-      showToast('Error: ' + error.message, 'error')
+      toast.error('Error: ' + error.message)
     } else {
-      showToast('Curso creado correctamente', 'success')
+      toast.success('Curso creado correctamente')
       setNewName('')
       setNewSection('')
       fetchCourses()

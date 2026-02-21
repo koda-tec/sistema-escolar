@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useToast } from '@/app/components/Toast'
+import toast from 'react-hot-toast'
 
 export default function AttendanceForm({ students, courseId }: { students: any[], courseId: string }) {
   const [attendance, setAttendance] = useState<Record<string, string>>(
@@ -11,7 +11,6 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
   const router = useRouter()
-  const { showToast } = useToast()
 
   const handleStatus = (studentId: string, status: string) => {
     setAttendance(prev => ({ ...prev, [studentId]: status }))
@@ -34,9 +33,9 @@ const save = async () => {
 
   if (error) {
     console.error("Detalle del error:", error);
-    showToast("Error 403: No tienes permiso para guardar asistencia", "error");
+toast.error("Error 403: No tienes permiso para guardar asistencia");
   } else {
-    showToast("Asistencia guardada correctamente", "success");
+toast.success("Asistencia guardada correctamente");
     router.push('/dashboard/asistencia');
   }
   setLoading(false);
