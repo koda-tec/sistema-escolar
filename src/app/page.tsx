@@ -143,26 +143,83 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="py-20 bg-white border-t border-slate-100 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <div>
-            <div className="flex items-center gap-3 mb-4 justify-center md:justify-start">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black">K</div>
-              <span className="text-xl font-black text-slate-900 uppercase tracking-tighter">KodaEd</span>
+{/* FOOTER PREMIUM */}
+      <footer className="bg-slate-950 text-slate-400 pt-24 pb-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+            
+            {/* Columna 1: Branding */}
+            <div className="space-y-6 text-center md:text-left">
+              <div className="flex items-center gap-3 justify-center md:justify-start">
+                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/20">
+                  K
+                </div>
+                <span className="text-2xl font-black tracking-tighter text-white uppercase">
+                  Koda<span className="text-blue-500">Ed</span>
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed max-w-xs mx-auto md:mx-0">
+                Transformando la gestión educativa con tecnología de vanguardia. La herramienta definitiva para conectar escuelas y familias.
+              </p>
+              <div className="flex gap-4 justify-center md:justify-start">
+                {/* Iconos sociales (puedes usar SVGs reales aquí) */}
+                <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all cursor-pointer">in</div>
+                <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all cursor-pointer">ig</div>
+                <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all cursor-pointer">tw</div>
+              </div>
             </div>
-            <p className="text-slate-400 text-sm font-medium">Software Factory de soluciones educativas.</p>
-          </div>
-          
-          <div className="flex gap-8 text-sm font-bold text-slate-500">
-            <Link href="/login" className="hover:text-blue-600 transition-colors">Login</Link>
-            <Link href="/register" className="hover:text-blue-600 transition-colors">Registro</Link>
-            <Link href="#" className="hover:text-blue-600 transition-colors">Soporte</Link>
+
+            {/* Columna 2: Producto */}
+            <div className="text-center md:text-left">
+              <h4 className="text-white font-bold mb-6 uppercase text-xs tracking-[0.2em]">Producto</h4>
+              <ul className="space-y-4 text-sm font-medium">
+                <li><Link href="#funcionalidades" className="hover:text-blue-400 transition-colors">Asistencia Digital</Link></li>
+                <li><Link href="#funcionalidades" className="hover:text-blue-400 transition-colors">Comunicados Oficiales</Link></li>
+                <li><Link href="#funcionalidades" className="hover:text-blue-400 transition-colors">Legajo del Alumno</Link></li>
+                <li><Link href="#funcionalidades" className="hover:text-blue-400 transition-colors">PWA Mobile</Link></li>
+              </ul>
+            </div>
+
+            {/* Columna 3: Soporte y Ventas */}
+            <div className="text-center md:text-left">
+              <h4 className="text-white font-bold mb-6 uppercase text-xs tracking-[0.2em]">Contacto</h4>
+              <ul className="space-y-4 text-sm font-medium">
+                <li><a href="mailto:info@kodaed.com" className="hover:text-blue-400 transition-colors">Ventas y Demo</a></li>
+                <li><a href="#" className="hover:text-blue-400 transition-colors">Centro de Ayuda</a></li>
+                <li><a href="#" className="hover:text-blue-400 transition-colors">Documentación</a></li>
+                <li className="text-blue-500 font-bold">WhatsApp: +54 9 11 0000-0000</li>
+              </ul>
+            </div>
+
+            {/* Columna 4: Newsletter / Registro rápido */}
+            <div className="bg-slate-900/50 p-6 rounded-2rem border border-white/5 space-y-4">
+              <h4 className="text-white font-bold text-sm">¿Sos directivo?</h4>
+              <p className="text-xs leading-relaxed text-slate-500">
+                Registrá tu escuela hoy y probá el sistema sin cargo por 30 días.
+              </p>
+              <Link 
+                href="/register" 
+                className="block text-center w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-xs font-black transition-all shadow-lg shadow-blue-500/10"
+              >
+                EMPEZAR AHORA
+              </Link>
+            </div>
+
           </div>
 
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
-            © 2026 Koda Software — Todos los derechos reservados.
-          </p>
+          {/* BARRA INFERIOR: Copyright */}
+          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="text-[10px] uppercase tracking-widest font-bold text-slate-600 text-center md:text-left leading-relaxed">
+              © 2026 KodaEd. Todos los derechos reservados. <br className="md:hidden" />
+              Software Factory de alto impacto por <span className="text-slate-400 font-black italic">Koda Software</span>.
+            </div>
+            
+            <div className="flex gap-6 text-[10px] font-black uppercase tracking-tighter">
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacidad</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">Términos</Link>
+              <Link href="/cookies" className="hover:text-white transition-colors">Cookies</Link>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
