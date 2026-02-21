@@ -1,5 +1,4 @@
 'use client'
-export const dynamic = 'force-dynamic'
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -10,23 +9,43 @@ function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [isValidToken, setIsValidToken] = useState(false)
-  
+  const [isValidToken, setIsValidToken] = useState<boolean | null>(null) // null = verificando
   const router = useRouter()
   const supabase = createClient()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Verificar si hay un token de recuperación en el hash de la URL
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = hashParams.get('access_token')
-    const type = hashParams.get('type')
+    // Función para verificar el token
+    const verifyToken = () => {
+      // Verificar en el hash de la URL (formato de Supabase)
+      const hash = window.location.hash.substring(1) // Quitar el #
+      const params = new URLSearchParams(hash)
+      const accessToken = params.get('access_token')
+      const refreshToken = params.get('refresh_token')
+      const type = params.get('type')
+      
+      console.log('Hash:', window.location.hash)
+      console.log('Type:', type)
+      console.log('Has access_token:', !!accessToken)
 
-    if (type === 'recovery' && accessToken) {
-      setIsValidToken(true)
-    } else if (window.location.hash && window.location.hash.includes('access_token')) {
-      setIsValidToken(true)
+      if (type === 'recovery' && accessToken) {
+        // Guardar tokens en sessionStorage para usarlos después
+        sessionStorage.setItem('supabase_access_token', accessToken)
+        if (refreshToken) {
+          sessionStorage.setItem('supabase_refresh_token', refreshToken)
+        }
+        setIsValidToken(true)
+      } else {
+        setIsValidToken(false)
+      }
     }
+
+    // Ejecutar inmediatamente y también cuando cambie la URL
+    verifyToken()
+    
+    // También escuchar cambios en el hash
+    window.addEventListener('hashchange', verifyToken)
+    return () => window.removeEventListener('hashchange', verifyToken)
   }, [])
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -46,30 +65,30 @@ function ResetPasswordForm() {
       return
     }
 
-    // Obtener el token del hash de la URL
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = hashParams.get('access_token')
-    const refreshToken = hashParams.get('refresh_token')
+    // Obtener tokens del sessionStorage
+    const accessToken = sessionStorage.getItem('supabase_access_token')
+    const refreshToken = sessionStorage.getItem('supabase_refresh_token')
 
     if (!accessToken) {
-      toast.error('Token de recuperación inválido')
+      toast.error('Token de recuperación expirado. Pedí uno nuevo.')
       setLoading(false)
       return
     }
 
-    // Establecer la sesión con los tokens del hash
+    // Establecer la sesión
     const { error: sessionError } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken || ''
     })
 
     if (sessionError) {
+      console.error('Session error:', sessionError)
       toast.error('Error al procesar la recuperación')
       setLoading(false)
       return
     }
 
-    // Actualizar la contraseña
+    // Cambiar contraseña
     const { error } = await supabase.auth.updateUser({
       password: password
     })
@@ -78,6 +97,9 @@ function ResetPasswordForm() {
       toast.error('Error al cambiar la contraseña: ' + error.message)
     } else {
       toast.success('¡Contraseña actualizada correctamente!')
+      // Limpiar sessionStorage
+      sessionStorage.removeItem('supabase_access_token')
+      sessionStorage.removeItem('supabase_refresh_token')
       
       setTimeout(() => {
         router.push('/login')
@@ -87,15 +109,25 @@ function ResetPasswordForm() {
     setLoading(false)
   }
 
+  // Estado de carga
+  if (isValidToken === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
   // Si el token no es válido
-  if (!isValidToken) {
+  if (isValidToken === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
         <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-2xl border text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full mx-auto flex items-center justify-center text-red-600 text-3xl mb-4">❌</div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Enlace inválido</h2>
           <p className="text-slate-500 mb-6">
-            El enlace de recuperación ha expirado o no es válido.
+            El enlace de recuperación ha expirado o no es válido.<br/>
+            <span className="text-sm text-slate-400">Por favor, solicitá uno nuevo desde el login.</span>
           </p>
           <a 
             href="/login" 
@@ -108,6 +140,7 @@ function ResetPasswordForm() {
     )
   }
 
+  // Formulario de nueva contraseña
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
       <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-2xl border">
@@ -157,7 +190,6 @@ function ResetPasswordForm() {
   )
 }
 
-// Componente wrapper con Suspense
 function ResetPasswordContent() {
   return (
     <Suspense fallback={
