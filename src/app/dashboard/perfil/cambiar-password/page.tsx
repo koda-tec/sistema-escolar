@@ -47,6 +47,12 @@ export default function CambiarPassword() {
     if (error) {
       toast.error('Error al cambiar contraseña: ' + error.message)
     } else {
+      // Marcar que ya cambió la contraseña
+      await supabase
+        .from('profiles')
+        .update({ must_change_password: false })
+        .eq('id', user.id)
+
       toast.success('¡Contraseña cambiada correctamente!')
       setPasswordActual('')
       setNuevaPassword('')

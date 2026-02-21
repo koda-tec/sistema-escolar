@@ -70,7 +70,8 @@ export async function POST(request: Request) {
         id: userId,
         full_name: fullName,
         role: role,
-        school_id: schoolId
+        school_id: schoolId,
+        must_change_password: true  // ← AGREGAR ESTO
       }, { onConflict: 'id' })
 
     if (profileError) {

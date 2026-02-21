@@ -28,16 +28,16 @@ export default function LoginPage() {
       return
     }
 
-    // Si el login fue exitoso, verificar el rol del usuario
+    // Si el login fue exitoso, verificar si debe cambiar contraseña
     if (data.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, must_change_password')
         .eq('id', data.user.id)
         .single()
 
-      // Si es docente o preceptor, redirigir a cambiar contraseña
-      if (profile?.role === 'docente' || profile?.role === 'preceptor') {
+      // Solo redirigir si es docente/preceptor Y debe cambiar contraseña
+      if ((profile?.role === 'docente' || profile?.role === 'preceptor') && profile?.must_change_password) {
         router.push('/dashboard/perfil/cambiar-password')
       } else {
         router.push('/dashboard')
