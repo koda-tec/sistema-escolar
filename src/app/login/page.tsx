@@ -16,25 +16,49 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    })
+
+    if (authError) {
       setError("Email o contraseña incorrectos")
       setLoading(false)
+      return
+    }
+
+    // Si el login fue exitoso, verificar el rol del usuario
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single()
+
+      // Si es docente o preceptor, redirigir a cambiar contraseña
+      if (profile?.role === 'docente' || profile?.role === 'preceptor') {
+        router.push('/dashboard/perfil/cambiar-password')
+      } else {
+        router.push('/dashboard')
+      }
     } else {
       router.push('/dashboard')
-      router.refresh()
     }
+
+    router.refresh()
+    setLoading(false)
   }
 
-const handleGoogleLogin = async () => {
-  const supabase = createClient() // Usa tu función createClient()
-  await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    },
-  })
-}
+  const handleGoogleLogin = async () => {
+    const supabase = createClient()
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 relative overflow-hidden">
