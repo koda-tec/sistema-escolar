@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/app/utils/supabase/admin'
+import { validatePassword } from '@/app/utils/passwordValidator'
 
 export async function POST(request: Request) {
   try {
@@ -12,6 +13,15 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validar contraseña
+    const passwordValidation = validatePassword(password)
+    if (!passwordValidation.valid) {
+      return NextResponse.json(
+        { error: 'La contraseña debe tener al menos 6 caracteres, una letra y un número' },
+        { status: 400 }
+      )
+    }
+
     let userId: string
 
     // 1. Buscar si el usuario ya existe en Auth
@@ -19,10 +29,7 @@ export async function POST(request: Request) {
     const existingUser = existingUsers?.users.find(u => u.email === email)
 
     if (existingUser) {
-      // El usuario ya existe, usamos su ID
       userId = existingUser.id
-      
-      // Actualizar su contraseña (por si acaso)
       await supabaseAdmin.auth.admin.updateUserById(userId, {
         password,
         user_metadata: { full_name: fullName }
@@ -76,7 +83,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `✅ ${role === 'docente' ? 'Profesor' : 'Preceptor'} creado/actualizado correctamente. Su contraseña provisional es: ${password}`
+      message: `✅ ${role === 'docente' ? 'Profesor' : 'Preceptor'} creado correctamente. Su contraseña provisional es: ${password}`
     })
 
   } catch (error: any) {
