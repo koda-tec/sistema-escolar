@@ -34,46 +34,55 @@ export default function CambiarPassword() {
     // Obtener usuario actual
     const { data: { user } } = await supabase.auth.getUser()
     
-    console.log('User ID:', user?.id)
-    
     if (!user) {
       toast.error('No se encontró el usuario')
       setLoading(false)
       return
     }
 
-    // Actualizar contraseña en Supabase Auth
-    const { error } = await supabase.auth.updateUser({
+    // 1. Actualizar contraseña en Supabase Auth
+    const { error: authError } = await supabase.auth.updateUser({
       password: nuevaPassword
     })
 
-    if (error) {
-      toast.error('Error al cambiar contraseña: ' + error.message)
-    } else {
-      console.log('Actualizando must_change_password a false para user ID:', user.id)
-      
-      // 📌 IMPORTANTE: Marcar que ya cambió la contraseña
-      const { data, error: updateError } = await supabase
-        .from('profiles')
-        .update({ must_change_password: false })
-        .eq('id', user.id)
-      
-      console.log('Update result:', data, updateError)
-
-      if (updateError) {
-        console.error('Error actualizando perfil:', updateError)
-      }
-
-      toast.success('¡Contraseña cambiada correctamente!')
-      setPasswordActual('')
-      setNuevaPassword('')
-      setConfirmarPassword('')
-      
-      // Redirigir al dashboard después de 2 segundos
-      setTimeout(() => {
-        window.location.href = '/dashboard'
-      }, 2000)
+    if (authError) {
+      toast.error('Error al cambiar contraseña: ' + authError.message)
+      setLoading(false)
+      return
     }
+
+    // 2. Marcar must_change_password = false en la tabla profiles
+    // Usamos el cliente de admin para asegurar que tiene permisos
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ must_change_password: false })
+      .eq('id', user.id)
+
+    if (profileError) {
+      console.error('Error actualizando perfil:', profileError)
+      toast.error('Error al actualizar estado de contraseña')
+      setLoading(false)
+      return
+    }
+
+    // Verificar que se actualizó correctamente
+    const { data: updatedProfile } = await supabase
+      .from('profiles')
+      .select('must_change_password')
+      .eq('id', user.id)
+      .single()
+
+    console.log('Verificación post-update:', updatedProfile)
+
+    toast.success('¡Contraseña cambiada correctamente!')
+    setPasswordActual('')
+    setNuevaPassword('')
+    setConfirmarPassword('')
+    
+    // Redirigir al dashboard después de 1.5 segundos
+    setTimeout(() => {
+      window.location.href = '/dashboard'
+    }, 1500)
 
     setLoading(false)
   }
