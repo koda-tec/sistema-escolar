@@ -1,11 +1,12 @@
 'use client'
-import { useState, useEffect } from 'react'
+export const dynamic = 'force-dynamic'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { validatePassword } from '@/app/utils/passwordValidator'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -23,15 +24,10 @@ export default function ResetPasswordPage() {
 
     if (type === 'recovery' && accessToken) {
       setIsValidToken(true)
-    } else {
-      // Si no hay token, verificar si es un enlace válido
-      const token = searchParams.get('token')
-      
-      if (token || (window.location.hash && window.location.hash.includes('access_token'))) {
-        setIsValidToken(true)
-      }
+    } else if (window.location.hash && window.location.hash.includes('access_token')) {
+      setIsValidToken(true)
     }
-  }, [searchParams])
+  }, [])
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -159,4 +155,21 @@ export default function ResetPasswordPage() {
       </div>
     </div>
   )
+}
+
+// Componente wrapper con Suspense
+function ResetPasswordContent() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600"></div>
+      </div>
+    }>
+      <ResetPasswordForm />
+    </Suspense>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return <ResetPasswordContent />
 }
