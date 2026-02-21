@@ -3,8 +3,12 @@ import { useEffect, useState, use } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useToast } from '@/app/components/Toast'
 
-export default function DetalleComunicado({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default async function DetalleComunicado({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  const { id } = await params;
   const [comunicado, setComunicado] = useState<any>(null)
   const [readInfo, setReadInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)

@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/utils/supabase/admin'
+import { getSupabaseAdmin } from '@/app/utils/supabase/admin' // <--- Cambiado de constante a función
 import { validatePassword } from '@/app/utils/passwordValidator'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
+    // INICIALIZACIÓN DIFERIDA: El cliente se crea AQUÍ, dentro de la función.
+    // Esto evita que falle durante el build estático.
+    const supabaseAdmin = getSupabaseAdmin()
+
     const { email, fullName, role, schoolId, password } = await request.json()
 
+    // Validaciones básicas
     if (!email || !fullName || !role || !schoolId || !password) {
       return NextResponse.json(
         { error: 'Faltan datos requeridos' },
@@ -25,39 +32,35 @@ export async function POST(request: Request) {
     let userId: string
 
     // 1. Buscar si el usuario ya existe en Auth
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
-    const existingUser = existingUsers?.users.find(u => u.email === email)
+    const { data: userData, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+    
+    if (listError) throw listError
+
+    const existingUser = userData?.users.find(u => u.email === email)
 
     if (existingUser) {
       userId = existingUser.id
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
+      // Actualizar usuario existente
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         password,
         user_metadata: { full_name: fullName }
       })
+      if (updateError) throw updateError
     } else {
       // 2. Crear usuario nuevo si no existe
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         email_confirm: true,
         password,
-        user_metadata: {
-          full_name: fullName
-        }
+        user_metadata: { full_name: fullName }
       })
 
       if (authError) {
-        console.error('Error creando usuario:', authError)
-        return NextResponse.json(
-          { error: authError.message },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: authError.message }, { status: 400 })
       }
 
       if (!authData.user) {
-        return NextResponse.json(
-          { error: 'Error al crear usuario' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Error al crear usuario' }, { status: 400 })
       }
 
       userId = authData.user.id
@@ -71,26 +74,27 @@ export async function POST(request: Request) {
         full_name: fullName,
         role: role,
         school_id: schoolId,
-        must_change_password: true  // ← AGREGAR ESTO
+        must_change_password: true 
       }, { onConflict: 'id' })
 
     if (profileError) {
       console.error('Error creando perfil:', profileError)
-      return NextResponse.json(
-        { error: profileError.message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: profileError.message }, { status: 400 })
     }
 
+    const roleLabel = role === 'docente' ? 'Profesor' : 'Preceptor'
+    
     return NextResponse.json({ 
       success: true, 
-      message: `✅ ${role === 'docente' ? 'Profesor' : 'Preceptor'} creado correctamente. Su contraseña provisional es: ${password}`
+      message: `✅ ${roleLabel} gestionado correctamente.`
     })
 
   } catch (error: any) {
-    console.error('Error en invite-user:', error)
+    console.error('Error en invite-user route:', error.message)
+    // Durante el build, si esto llegara a ejecutarse y fallar por falta de llaves,
+    // devolvería este error, pero al ser POST, Next.js no lo llamará durante el build.
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || 'Error interno del servidor' },
       { status: 500 }
     )
   }

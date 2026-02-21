@@ -1,9 +1,15 @@
 import { createClient } from '@/app/utils/supabase/server'
 import AttendanceForm from './AttendanceForm'
-export default async function TomarAsistenciaPage({ params }: { params: { id: string } }) {
-  const supabase = await createClient()
-  const { id } = await params // En Next 15 params es una promesa
 
+export default async function TomarAsistenciaPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> // Cambiado a Promise
+}) {
+  const supabase = await createClient()
+  
+  // En Next.js 15/16 es obligatorio esperar a los params
+  const { id } = await params; 
   // 1. Info del curso
   const { data: course } = await supabase.from('courses').select('*').eq('id', id).single()
 

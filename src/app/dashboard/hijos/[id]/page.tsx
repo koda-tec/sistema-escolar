@@ -1,8 +1,14 @@
 import { createClient } from '@/app/utils/supabase/server'
 
-export default async function DetalleHijoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DetalleHijoPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
   const supabase = await createClient()
-  const { id } = await params
+  
+  // Esperamos los parámetros
+  const { id } = await params;
 
   // Info del alumno - Forzamos el tipado para evitar el error de array
   const { data: alumno } = await supabase

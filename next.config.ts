@@ -3,13 +3,13 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: process.env.NODE_ENV === "development",
+  disable: false,
 });
 
 const nextConfig: NextConfig = {
-  // Añadimos esto para resolver el conflicto con Turbopack
-  // ya que el plugin de PWA necesita Webpack para funcionar.
-   turbopack: {}, 
+  // Esto silencia el error y confirma que usaremos Webpack para los plugins
+  // @ts-ignore
+  turbopack: {}, 
 };
 
 export default withPWA(nextConfig);

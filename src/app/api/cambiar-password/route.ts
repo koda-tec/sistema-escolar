@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@/app/utils/supabase/server' // Usamos tu helper de servidor
+import { getSupabaseAdmin } from '@/app/utils/supabase/admin' // Importamos la función
+
+// Evita errores durante el build analizando cookies
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
@@ -13,41 +16,25 @@ export async function POST(request: Request) {
       )
     }
 
-    // Crear cliente con cookies para mantener la sesión
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
+    // 1. Crear el cliente de Supabase (Server Component style)
+    const supabase = await createClient()
 
-    // 1. Cambiar contraseña con el cliente normal (mantiene la sesión)
+    // 2. Cambiar contraseña del usuario actual (Auth)
     const { error: authError } = await supabase.auth.updateUser({
       password: nuevaPassword
     })
 
     if (authError) {
-      console.error('Error cambiando contraseña:', authError)
       return NextResponse.json(
         { error: authError.message },
         { status: 400 }
       )
     }
 
-    // 2. Importar supabaseAdmin para actualizar el campo must_change_password
-    const { supabaseAdmin } = await import('@/app/utils/supabase/admin')
+    // 3. Inicializar el admin usando la nueva función (Soluciona el error de TS)
+    const supabaseAdmin = getSupabaseAdmin()
     
+    // 4. Actualizar el campo en la tabla profiles
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({ must_change_password: false })
@@ -55,7 +42,7 @@ export async function POST(request: Request) {
 
     if (profileError) {
       console.error('Error actualizando perfil:', profileError)
-      // No retornamos error aquí porque la contraseña sí se cambió
+      // No cortamos el flujo aquí porque la clave en Auth ya se cambió con éxito
     }
 
     return NextResponse.json({ 
@@ -64,9 +51,9 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
-    console.error('Error general:', error)
+    console.error('Error general en cambiar-password:', error)
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || 'Error interno del servidor' },
       { status: 500 }
     )
   }
