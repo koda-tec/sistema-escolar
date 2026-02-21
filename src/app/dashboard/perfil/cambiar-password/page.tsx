@@ -5,7 +5,6 @@ import { validatePassword } from '@/app/utils/passwordValidator'
 import { toast } from 'sonner'
 
 export default function CambiarPassword() {
-  const [passwordActual, setPasswordActual] = useState('')
   const [nuevaPassword, setNuevaPassword] = useState('')
   const [confirmarPassword, setConfirmarPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -40,49 +39,30 @@ export default function CambiarPassword() {
       return
     }
 
-    // 1. Actualizar contraseña en Supabase Auth
-    const { error: authError } = await supabase.auth.updateUser({
-      password: nuevaPassword
+    // Llamar a la API con el cliente admin (sin problemas de RLS)
+    const response = await fetch('/api/cambiar-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nuevaPassword: nuevaPassword,
+        userId: user.id
+      })
     })
 
-    if (authError) {
-      toast.error('Error al cambiar contraseña: ' + authError.message)
-      setLoading(false)
-      return
+    const result = await response.json()
+
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success('¡Contraseña cambiada correctamente!')
+      setNuevaPassword('')
+      setConfirmarPassword('')
+      
+      // Redirigir al dashboard
+      setTimeout(() => {
+        window.location.href = '/dashboard'
+      }, 1500)
     }
-
-    // 2. Marcar must_change_password = false en la tabla profiles
-    // Usamos el cliente de admin para asegurar que tiene permisos
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ must_change_password: false })
-      .eq('id', user.id)
-
-    if (profileError) {
-      console.error('Error actualizando perfil:', profileError)
-      toast.error('Error al actualizar estado de contraseña')
-      setLoading(false)
-      return
-    }
-
-    // Verificar que se actualizó correctamente
-    const { data: updatedProfile } = await supabase
-      .from('profiles')
-      .select('must_change_password')
-      .eq('id', user.id)
-      .single()
-
-    console.log('Verificación post-update:', updatedProfile)
-
-    toast.success('¡Contraseña cambiada correctamente!')
-    setPasswordActual('')
-    setNuevaPassword('')
-    setConfirmarPassword('')
-    
-    // Redirigir al dashboard después de 1.5 segundos
-    setTimeout(() => {
-      window.location.href = '/dashboard'
-    }, 1500)
 
     setLoading(false)
   }
@@ -90,7 +70,6 @@ export default function CambiarPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
       <div className="max-w-md w-full">
-        {/* Mensaje de advertencia */}
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl mb-8">
           <p className="text-amber-800 font-medium text-center">
             ⚠️ Estás usando una contraseña provisional. Por seguridad, debes cambiar tu contraseña.
