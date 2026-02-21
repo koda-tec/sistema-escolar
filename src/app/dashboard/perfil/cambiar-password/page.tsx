@@ -34,6 +34,8 @@ export default function CambiarPassword() {
     // Obtener usuario actual
     const { data: { user } } = await supabase.auth.getUser()
     
+    console.log('User ID:', user?.id)
+    
     if (!user) {
       toast.error('No se encontró el usuario')
       setLoading(false)
@@ -48,11 +50,19 @@ export default function CambiarPassword() {
     if (error) {
       toast.error('Error al cambiar contraseña: ' + error.message)
     } else {
+      console.log('Actualizando must_change_password a false para user ID:', user.id)
+      
       // 📌 IMPORTANTE: Marcar que ya cambió la contraseña
-      await supabase
+      const { data, error: updateError } = await supabase
         .from('profiles')
         .update({ must_change_password: false })
         .eq('id', user.id)
+      
+      console.log('Update result:', data, updateError)
+
+      if (updateError) {
+        console.error('Error actualizando perfil:', updateError)
+      }
 
       toast.success('¡Contraseña cambiada correctamente!')
       setPasswordActual('')
