@@ -41,7 +41,7 @@ export default function CambiarPassword() {
       return
     }
 
-    // Llamar a la API con el cliente admin
+    // Llamar a la API
     const response = await fetch('/api/cambiar-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,33 +55,16 @@ export default function CambiarPassword() {
 
     if (result.error) {
       toast.error(result.error)
-      setLoading(false)
-      return
+    } else {
+      toast.success('¡Contraseña cambiada correctamente!')
+      setNuevaPassword('')
+      setConfirmarPassword('')
+      
+      // Redirigir directamente al dashboard (sesión mantenida)
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 1500)
     }
-
-    toast.success('¡Contraseña cambiada correctamente!')
-    setNuevaPassword('')
-    setConfirmarPassword('')
-    
-    // Esperar un momento y luego refrescar la sesión
-    setTimeout(async () => {
-      try {
-        // Forzar refresh de la sesión para mantener al usuario logueado
-        const { error: refreshError } = await supabase.auth.refreshSession()
-        
-        if (refreshError) {
-          console.error('Error refresh session:', refreshError)
-          // Si falla, redirigir al login de todos modos
-          router.push('/login')
-        } else {
-          // Éxito: redirigir al dashboard manteniendo la sesión
-          router.push('/dashboard')
-        }
-      } catch (err) {
-        console.error('Error:', err)
-        router.push('/login')
-      }
-    }, 1500)
 
     setLoading(false)
   }
