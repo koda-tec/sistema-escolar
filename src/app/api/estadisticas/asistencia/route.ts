@@ -24,10 +24,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No tiene escuela asignada' }, { status: 400 })
     }
 
-    // Query simple sin relaciones
+    // Query simple - solo campos que existen
     let query = supabase
       .from('attendance')
-      .select('id, status, date, course_id, student_id')
+      .select('id, status, date, student_id')
 
     // Filtrar por año
     if (anio) {
@@ -35,36 +35,37 @@ export async function GET(request: Request) {
         .lte('date', `${anio}-12-31`)
     }
 
-    // Filtrar por curso si se especifica
-    if (courseId) {
-      query = query.eq('course_id', courseId)
-    }
-
-    const { data: attendance, error } = await query
+    const { data: attendanceData, error } = await query
 
     if (error) {
       console.error('Error obteniendo attendance:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Obtener nombres de cursos
-    const courseIds = [...new Set(attendance?.map((a: any) => a.course_id).filter(Boolean) || [])]
-    const { data: coursesData } = await supabase
-      .from('courses')
-      .select('id, name')
-      .in('id', courseIds)
+    // Si hay un courseId, necesitamos filtrar por los estudiantes de ese curso
+    let attendance = attendanceData || []
+    
+    if (courseId) {
+      // Obtener los estudiantes del curso desde la tabla students
+      const { data: studentsInCourse } = await supabase
+        .from('students')
+        .select('id')
+        .eq('course_id', courseId)
 
-    const courseMap: Record<string, string> = {}
-    coursesData?.forEach((c: any) => {
-      courseMap[c.id] = c.name
-    })
+      const studentIdsInCourse = studentsInCourse?.map(s => s.id) || []
+      
+      // Filtrar attendance solo para estudiantes del curso
+      attendance = attendance.filter((a: any) => 
+        studentIdsInCourse.includes(a.student_id)
+      )
+    }
 
     // Obtener nombres de estudiantes
-    const studentIds = [...new Set(attendance?.map((a: any) => a.student_id).filter(Boolean) || [])]
+    const allStudentIds = [...new Set(attendance.map((a: any) => a.student_id).filter(Boolean))]
     const { data: studentsData } = await supabase
       .from('profiles')
       .select('id, full_name')
-      .in('id', studentIds)
+      .in('id', allStudentIds)
 
     const studentMap: Record<string, string> = {}
     studentsData?.forEach((s: any) => {
@@ -72,11 +73,11 @@ export async function GET(request: Request) {
     })
 
     // Calcular estadísticas
-    const totalRegistros = attendance?.length || 0
-    const presentes = attendance?.filter((a: any) => a.status === 'presente').length || 0
-    const ausentes = attendance?.filter((a: any) => a.status === 'ausente').length || 0
-    const tardanzas = attendance?.filter((a: any) => a.status === 'tardanza').length || 0
-    const justificados = attendance?.filter((a: any) => a.status === 'justificado').length || 0
+    const totalRegistros = attendance.length
+    const presentes = attendance.filter((a: any) => a.status === 'presente').length
+    const ausentes = attendance.filter((a: any) => a.status === 'ausente').length
+    const tardanzas = attendance.filter((a: any) => a.status === 'tardanza').length
+    const justificados = attendance.filter((a: any) => a.status === 'justificado').length
 
     // Calcular porcentajes
     const porcentajeAsistencia = totalRegistros > 0 
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
 
     // Top 5 de alumnos con más ausencias
     const ausenciasPorAlumno: Record<string, number> = {}
-    attendance?.forEach((registro: any) => {
+    attendance.forEach((registro: any) => {
       if (registro.status === 'ausente') {
         const nombre = studentMap[registro.student_id] || 'Desconocido'
         ausenciasPorAlumno[nombre] = (ausenciasPorAlumno[nombre] || 0) + 1
