@@ -40,7 +40,7 @@ export default function InstallPWA() {
   if (!isVisible) return null;
 
   return (
-    <div className="bg-blue-600 p-6 rounded-[2rem] text-white shadow-2xl shadow-blue-200 border border-blue-400 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-10 duration-700 mb-8">
+    <div className="bg-blue-600 p-6 rounded-2rem text-white shadow-2xl shadow-blue-200 border border-blue-400 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-10 duration-700 mb-8">
       <div className="flex items-center gap-4 text-center md:text-left">
         <div className="text-4xl">📱</div>
         <div>
