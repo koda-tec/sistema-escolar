@@ -1,5 +1,6 @@
 import { createClient } from "../utils/supabase/client"
 export const dynamic = 'force-dynamic' 
+import InstallPWA from "../components/InstallPWA"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -14,6 +15,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <InstallPWA />
       <header>
         <h1 className="text-3xl font-bold text-slate-800">
           Hola, {profile?.full_name?.split(' ')[0] || 'Bienvenido'} 👋
