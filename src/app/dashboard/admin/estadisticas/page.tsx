@@ -5,11 +5,13 @@ import { toast } from 'sonner'
 
 export default function EstadisticasPage() {
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [anio, setAnio] = useState(new Date().getFullYear().toString())
   const [asistencia, setAsistencia] = useState<any>(null)
   const [comunicados, setComunicados] = useState<any>(null)
   const [cursos, setCursos] = useState<any[]>([])
   const [selectedCurso, setSelectedCurso] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -30,38 +32,58 @@ export default function EstadisticasPage() {
     fetchCursos()
   }, [])
 
-  // Cargar estadísticas
-  useEffect(() => {
-    const fetchEstadisticas = async () => {
-      setLoading(true)
-      
-      try {
-        // Asistencia
-        const asistenciaParams = new URLSearchParams({ anio })
-        if (selectedCurso) {
-          asistenciaParams.append('courseId', selectedCurso)
-        }
-        const asistenciaRes = await fetch(`/api/estadisticas/asistencia?${asistenciaParams}`)
-        const asistenciaData = await asistenciaRes.json()
+  // Función para cargar estadísticas
+  const fetchEstadisticas = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      // Asistencia
+      const asistenciaParams = new URLSearchParams({ anio })
+      if (selectedCurso) {
+        asistenciaParams.append('courseId', selectedCurso)
+      }
+      const asistenciaRes = await fetch(`/api/estadisticas/asistencia?${asistenciaParams}`)
+      const asistenciaData = await asistenciaRes.json()
+
+      if (asistenciaData.error) {
+        setError('Error en asistencia: ' + asistenciaData.error)
+      } else {
         setAsistencia(asistenciaData)
-
-        // Comunicados
-        const comunicadosRes = await fetch(`/api/estadisticas/comunicados?anio=${anio}`)
-        const comunicadosData = await comunicadosRes.json()
-        setComunicados(comunicadosData)
-
-      } catch (error) {
-        console.error('Error cargando estadísticas:', error)
-        toast.error('Error al cargar estadísticas')
       }
 
-      setLoading(false)
+      // Comunicados
+      const comunicadosRes = await fetch(`/api/estadisticas/comunicados?anio=${anio}`)
+      const comunicadosData = await comunicadosRes.json()
+
+      if (comunicadosData.error) {
+        setError('Error en comunicados: ' + comunicadosData.error)
+      } else {
+        setComunicados(comunicadosData)
+      }
+
+    } catch (err) {
+      console.error('Error cargando estadísticas:', err)
+      setError('Error al conectar con el servidor')
     }
 
+    setLoading(false)
+  }
+
+  // Cargar estadísticas al inicio y cuando cambien filtros
+  useEffect(() => {
     fetchEstadisticas()
   }, [anio, selectedCurso])
 
-  // Loading
+  // Función para recargar manualmente
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchEstadisticas()
+    setRefreshing(false)
+    toast.success('Estadísticas actualizadas')
+  }
+
+  // Loading inicial
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
@@ -76,11 +98,39 @@ export default function EstadisticasPage() {
   return (
     <div className="min-h-screen bg-[#f8fafc] p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Estadísticas</h1>
-          <p className="text-slate-500 mt-2">Panel de control institucional</p>
+        {/* Header con botón de recargar */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Estadísticas</h1>
+            <p className="text-slate-500 mt-2">Panel de control institucional</p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="mt-4 md:mt-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 flex items-center gap-2"
+          >
+            <svg className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {refreshing ? 'Actualizando...' : 'Recargar'}
+          </button>
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">
+            {error}
+          </div>
+        )}
+
+        {/* Debug info (solo desarrollo) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-xl mb-6 text-sm">
+            <p><strong>Debug:</strong></p>
+            <p>Año: {anio} | Curso: {selectedCurso || 'Todos'}</p>
+            <p>Asistencia: {asistencia ? 'Cargado' : 'Vacío'} | Comunicados: {comunicados ? 'Cargado' : 'Vacío'}</p>
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border mb-6">
@@ -116,33 +166,41 @@ export default function EstadisticasPage() {
         {/* Estadísticas de Asistencia */}
         <div className="mb-8">
           <h2 className="text-xl font-bold text-slate-900 mb-4">📊 Asistencia</h2>
+          
+          {/* Debug de datos crudos */}
+          {process.env.NODE_ENV === 'development' && (
+            <pre className="bg-slate-900 text-green-400 p-4 rounded-xl text-xs mb-4 overflow-auto max-h-40">
+              {JSON.stringify(asistencia, null, 2)}
+            </pre>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Porcentaje de Asistencia */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border">
-              <p className="text-sm text-slate-500 mb-1">% Asistencia</p>
-              <p className="text-3xl font-bold text-green-600">
-                {asistencia?.resumen?.porcentajeAsistencia || 0}%
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-2xl border border-green-200">
+              <p className="text-sm text-green-700 mb-1">% Asistencia</p>
+              <p className="text-4xl font-bold text-green-700">
+                {asistencia?.resumen?.porcentajeAsistencia ?? 0}%
               </p>
             </div>
             {/* Porcentaje de Ausentismo */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border">
-              <p className="text-sm text-slate-500 mb-1">% Ausentismo</p>
-              <p className="text-3xl font-bold text-red-600">
-                {asistencia?.resumen?.porcentajeAusentismo || 0}%
+            <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-2xl border border-red-200">
+              <p className="text-sm text-red-700 mb-1">% Ausentismo</p>
+              <p className="text-4xl font-bold text-red-700">
+                {asistencia?.resumen?.porcentajeAusentismo ?? 0}%
               </p>
             </div>
             {/* Total Presentes */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border">
               <p className="text-sm text-slate-500 mb-1">Presentes</p>
-              <p className="text-3xl font-bold text-green-600">
-                {asistencia?.resumen?.presentes || 0}
+              <p className="text-4xl font-bold text-green-600">
+                {asistencia?.resumen?.presentes ?? 0}
               </p>
             </div>
             {/* Total Ausentes */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border">
               <p className="text-sm text-slate-500 mb-1">Ausentes</p>
-              <p className="text-3xl font-bold text-red-600">
-                {asistencia?.resumen?.ausentes || 0}
+              <p className="text-4xl font-bold text-red-600">
+                {asistencia?.resumen?.ausentes ?? 0}
               </p>
             </div>
           </div>
@@ -152,31 +210,31 @@ export default function EstadisticasPage() {
             <div className="bg-white p-4 rounded-2xl shadow-sm border">
               <p className="text-sm text-slate-500 mb-1">Tardanzas</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {asistencia?.resumen?.tardanzas || 0}
+                {asistencia?.resumen?.tardanzas ?? 0}
               </p>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-sm border">
               <p className="text-sm text-slate-500 mb-1">Justificados</p>
               <p className="text-2xl font-bold text-blue-600">
-                {asistencia?.resumen?.justificados || 0}
+                {asistencia?.resumen?.justificados ?? 0}
               </p>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-sm border">
               <p className="text-sm text-slate-500 mb-1">Total Registros</p>
               <p className="text-2xl font-bold text-slate-600">
-                {asistencia?.resumen?.totalRegistros || 0}
+                {asistencia?.resumen?.totalRegistros ?? 0}
               </p>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-sm border">
-              <p className="text-sm text-slate-500 mb-1">Alumnos sin asistencia</p>
+              <p className="text-sm text-slate-500 mb-1">Alumnos en top</p>
               <p className="text-2xl font-bold text-slate-600">
-                {asistencia?.topAusentes?.length || 0}
+                {asistencia?.topAusentes?.length ?? 0}
               </p>
             </div>
           </div>
 
           {/* Top 5 Ausentes */}
-          {asistencia?.topAusentes && asistencia.topAusentes.length > 0 && (
+          {asistencia?.topAusentes && asistencia.topAusentes.length > 0 ? (
             <div className="bg-white p-6 rounded-2xl shadow-sm border mt-4">
               <h3 className="font-bold text-slate-900 mb-4">👨‍🎓 Top 5 Alumnos con más ausencias</h3>
               <div className="space-y-2">
@@ -190,67 +248,79 @@ export default function EstadisticasPage() {
                 ))}
               </div>
             </div>
+          ) : (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border mt-4 text-center">
+              <p className="text-slate-500">No hay datos de ausencias aún</p>
+            </div>
           )}
         </div>
 
         {/* Estadísticas de Comunicados */}
         <div className="mb-8">
           <h2 className="text-xl font-bold text-slate-900 mb-4">📬 Comunicados</h2>
+          
+          {/* Debug de datos crudos */}
+          {process.env.NODE_ENV === 'development' && (
+            <pre className="bg-slate-900 text-blue-400 p-4 rounded-xl text-xs mb-4 overflow-auto max-h-40">
+              {JSON.stringify(comunicados, null, 2)}
+            </pre>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Total Comunicados */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border">
-              <p className="text-sm text-slate-500 mb-1">Total Enviados</p>
-              <p className="text-3xl font-bold text-blue-600">
-                {comunicados?.resumen?.total || 0}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200">
+              <p className="text-sm text-blue-700 mb-1">Total Enviados</p>
+              <p className="text-4xl font-bold text-blue-700">
+                {comunicados?.resumen?.total ?? 0}
               </p>
             </div>
             {/* Tasa de Lectura */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border">
-              <p className="text-sm text-slate-500 mb-1">Tasa de Lectura</p>
-              <p className="text-3xl font-bold text-green-600">
-                {comunicados?.resumen?.tasaLectura || 0}%
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-2xl border border-green-200">
+              <p className="text-sm text-green-700 mb-1">Tasa de Lectura</p>
+              <p className="text-4xl font-bold text-green-700">
+                {comunicados?.resumen?.tasaLectura ?? 0}%
               </p>
             </div>
-            {/* <!-- Leídos --> */}
+            {/* Leídos */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border">
               <p className="text-sm text-slate-500 mb-1">Leídos</p>
-              <p className="text-3xl font-bold text-green-600">
-                {comunicados?.resumen?.leidos || 0}
+              <p className="text-4xl font-bold text-green-600">
+                {comunicados?.resumen?.leidos ?? 0}
               </p>
             </div>
-            {/* <!-- No Leídos --> */}
+            {/* No Leídos */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border">
               <p className="text-sm text-slate-500 mb-1">No Leídos</p>
-              <p className="text-3xl font-bold text-red-600">
-                {comunicados?.resumen?.noLeidos || 0}
+              <p className="text-4xl font-bold text-red-600">
+                {comunicados?.resumen?.noLeidos ?? 0}
               </p>
             </div>
           </div>
 
-          {/* <!-- Más métricas de comunicados --> */}
+          {/* Más métricas de comunicados */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
             <div className="bg-white p-4 rounded-2xl shadow-sm border">
               <p className="text-sm text-slate-500 mb-1">Confirmados</p>
               <p className="text-2xl font-bold text-green-600">
-                {comunicados?.resumen?.confirmados || 0}
+                {comunicados?.resumen?.confirmados ?? 0}
               </p>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-sm border">
-              <p className="text-sm text-slate-500 mb-1">Pendientes de Confirmar</p>
+              <p className="text-sm text-slate-500 mb-1">Pendientes Confirmar</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {comunicados?.resumen?.pendientesConfirmacion || 0}
+                {comunicados?.resumen?.pendientesConfirmacion ?? 0}
               </p>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-sm border">
-              <p className="text-sm text-slate-500 mb-1">Últimos 30 días</p>
+              <p className="text-sm text-slate-500 mb-1">Recientes</p>
               <p className="text-2xl font-bold text-blue-600">
-                {comunicados?.recientes?.length || 0}
+                {comunicados?.recientes?.length ?? 0}
               </p>
             </div>
           </div>
 
-          {/* <!-- Comunicados Recientes --> */}
-          {comunicados?.recientes && comunicados.recientes.length > 0 && (
+          {/* Comunicados Recientes */}
+          {comunicados?.recientes && comunicados.recientes.length > 0 ? (
             <div className="bg-white p-6 rounded-2xl shadow-sm border mt-4">
               <h3 className="font-bold text-slate-900 mb-4">📋 Comunicados Recientes</h3>
               <div className="space-y-2">
@@ -268,6 +338,10 @@ export default function EstadisticasPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          ) : (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border mt-4 text-center">
+              <p className="text-slate-500">No hay comunicados aún</p>
             </div>
           )}
         </div>
