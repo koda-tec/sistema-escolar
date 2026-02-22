@@ -142,9 +142,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos" className={getLinkStyle('/dashboard/admin/alumnos')}>
                   <span className="text-lg">👥</span> Gestión Alumnos
                 </Link>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/libretas" className={getLinkStyle('/dashboard/admin/libretas')}>
-                  <span className="text-lg">📄</span> Carga de Libretas
+                <Link onClick={() => setSidebarOpen(false)} href="/preceptor/libretas" className={getLinkStyle('/preceptor/libretas')}>
+                <span className="text-lg">📄</span> Carga de Libretas
                 </Link>
+
               </>
             )}
 
