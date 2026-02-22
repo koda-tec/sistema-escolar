@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  // Normalización para comparaciones seguras
+  // NORMALIZACIÓN
   const userRole = profile?.role?.toLowerCase().trim() || ''
   const hasSchool = !!profile?.school_id
   const brandName = profile?.schools?.name || "KodaEd"
@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const isActive = pathname === path
     return `${linkStyle} ${
       isActive 
-        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 opacity-100' 
+        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 opacity-100 scale-[1.02]' 
         : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
     }`
   }
@@ -63,13 +63,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-slate-900 overflow-x-hidden">
       
-      {/* NAVBAR MÓVIL - CORRECCIÓN DE ALTURA PARA IPHONE */}
-      <header className="md:hidden bg-slate-950 text-white px-4 pb-4 pt-[env(safe-area-inset-top,1.5rem)] flex justify-between items-center sticky top-0 z-50 border-b border-white/5 shadow-2xl">
+      {/* NAVBAR MÓVIL (HEADER SUPERIOR) */}
+      <header className="md:hidden bg-slate-950 text-white px-4 pb-4 pt-[env(safe-area-inset-top,1.2rem)] flex justify-between items-center sticky top-0 z-60 border-b border-white/5 shadow-2xl">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-sm">K</div>
+          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg">K</div>
           <div className="flex flex-col">
-            <span className="text-blue-500 font-black text-[9px] uppercase tracking-widest leading-none">Institución</span>
-            <h2 className="font-black tracking-tighter uppercase text-[11px] truncate max-w-150px leading-tight">
+            <span className="text-blue-500 font-black text-[9px] uppercase tracking-widest leading-none text-left">Institución</span>
+            <h2 className="font-black tracking-tighter uppercase text-[11px] truncate max-w-150px leading-tight text-left">
               {brandName}
             </h2>
           </div>
@@ -84,96 +84,91 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-72 bg-slate-950 text-white transform transition-transform duration-500
+        fixed inset-y-0 left-0 z-50 w-72 bg-slate-950 text-white transform transition-transform duration-500
         md:translate-x-0 md:static md:inset-auto
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full border-r border-white/5">
           
+          {/* Logo Desktop */}
           <div className="p-8 hidden md:block">
-            <div className="flex items-center gap-3 mb-6 font-black text-xl tracking-tighter uppercase italic text-white">
-               Koda<span className="text-blue-600 font-black">Ed</span>
+            <div className="flex items-center gap-3 mb-6 font-black text-xl tracking-tighter uppercase italic text-white text-left">
+               Koda<span className="text-blue-600 font-black text-left">Ed</span>
             </div>
             <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">SaaS Node</p>
-                <p className="text-sm font-bold text-slate-200 truncate">{brandName}</p>
+                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 text-left">SaaS Node</p>
+                <p className="text-sm font-bold text-slate-200 truncate text-left">{brandName}</p>
             </div>
           </div>
 
-          {/* Navegación - pt-6 asegura que el botón Inicio respire en móviles */}
-          <nav className="flex-1 px-4 space-y-2 overflow-y-auto pt-8 md:pt-0 custom-scrollbar">
+          {/* Navegación - pt-28 para móviles para que no lo tape el Header */}
+          <nav className="flex-1 px-4 space-y-2 overflow-y-auto pt-28 md:pt-0 custom-scrollbar">
             
             <Link onClick={() => setSidebarOpen(false)} href="/dashboard" className={getLinkStyle('/dashboard')}>
               <span className="flex items-center gap-3"><span>🏠</span> Inicio</span>
             </Link>
             
-            {/* ADMIN KODA */}
             {userRole === 'admin_koda' && (
               <>
-                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">SaaS Master</div>
+                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">SaaS Master</div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin-koda" className={getLinkStyle('/dashboard/admin-koda')}>
                    <span>🏢</span> Gestión Escuelas
                 </Link>
               </>
             )}
 
-            {/* DIRECTIVO */}
             {userRole === 'directivo' && hasSchool && (
               <>
-                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">Dirección</div>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/cursos" className={getLinkStyle('/dashboard/admin/cursos')}><span>🏫</span> Cursos</Link>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/personal" className={getLinkStyle('/dashboard/admin/personal')}><span>👨‍🏫</span> Personal</Link>
+                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Dirección</div>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/cursos" className={getLinkStyle('/dashboard/admin/cursos')}><span>🏫</span> Gestión Cursos</Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/personal" className={getLinkStyle('/dashboard/admin/personal')}><span>👨‍🏫</span> Gestión Personal</Link>
               </>
             )}
 
-            {/* PRECEPTOR */}
             {userRole === 'preceptor' && hasSchool && (
               <>
-                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">Operación</div>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className={getLinkStyle('/dashboard/asistencia')}><span>📝</span> Asistencia</Link>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos" className={getLinkStyle('/dashboard/admin/alumnos')}><span>👥</span> Alumnos</Link>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/preceptor/libretas" className={getLinkStyle('/dashboard/preceptor/libretas')}><span>📄</span> Libretas</Link>
+                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Operación</div>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className={getLinkStyle('/dashboard/asistencia')}><span>📝</span> Tomar Asistencia</Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos" className={getLinkStyle('/dashboard/admin/alumnos')}><span>👥</span> Gestión Alumnos</Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/preceptor/libretas" className={getLinkStyle('/dashboard/preceptor/libretas')}><span>📄</span> Carga de Libretas</Link>
               </>
             )}
 
-            {/* DOCENTE */}
             {userRole === 'docente' && hasSchool && (
                 <>
-                  <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">Aula</div>
+                  <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Aula</div>
                   <Link onClick={() => setSidebarOpen(false)} href="/dashboard/docente/materias" className={getLinkStyle('/dashboard/docente/materias')}><span>📓</span> Mis Materias</Link>
                 </>
             )}
 
-            {/* PADRE (Visible siempre para evitar sidebar vacío) */}
+            {/* SECCIÓN PADRE - Visible siempre */}
             {userRole === 'padre' && (
               <>
-                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">Familia</div>
+                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Familia</div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={getLinkStyle('/dashboard/hijos')}>
-                   <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
+                   <span>👨‍🎓</span> Mis Hijos
                 </Link>
               </>
             )}
 
-            {/* COMUNICADOS */}
-            {hasSchool && (
-              <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={getLinkStyle('/dashboard/comunicados')}>
+            {/* COMUNICADOS - Visible siempre para cualquier rol logueado */}
+            <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={getLinkStyle('/dashboard/comunicados')}>
                 <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
-              </Link>
-            )}
+            </Link>
           </nav>
 
-          {/* Sección de Perfil y Cierre de Sesión */}
+          {/* Footer del Sidebar */}
           <div className="p-4 mt-auto mb-[env(safe-area-inset-bottom,1.5rem)]">
             <div className="bg-white/5 rounded-2rem p-4 border border-white/5">
               <div className="flex items-center gap-3 mb-4 text-left">
                 <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black text-blue-500 border border-white/10 uppercase">
                   {profile?.full_name?.charAt(0) || 'U'}
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <p className="text-sm font-bold truncate text-white leading-tight">{profile?.full_name || 'Usuario'}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
+                <div className="flex flex-col min-w-0 text-left">
+                  <p className="text-sm font-bold truncate text-white leading-tight text-left">{profile?.full_name || 'Usuario'}</p>
+                  <div className="flex items-center gap-1.5 mt-1 text-left">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{profile?.role}</p>
+                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest text-left">{profile?.role}</p>
                   </div>
                 </div>
               </div>
@@ -188,9 +183,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* OVERLAY MÓVIL */}
+      {/* OVERLAY */}
       {isSidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30 md:hidden transition-all duration-500"></div>
+        <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden transition-all duration-500"></div>
       )}
 
       {/* CONTENIDO PRINCIPAL */}
