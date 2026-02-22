@@ -23,10 +23,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No tiene escuela asignada' }, { status: 400 })
     }
 
-    // Construir query base para comunicados
+    // Construir query base para communications (tu tabla)
     let query = supabase
-      .from('comunicados')
-      .select('id, titulo, created_at')
+      .from('communications')
+      .select('id, title, created_at')
       .eq('school_id', profile.school_id)
 
     if (anio) {
@@ -34,32 +34,33 @@ export async function GET(request: Request) {
         .lte('created_at', `${anio}-12-31`)
     }
 
-    const { data: comunicados, error } = await query
+    const { data: communications, error } = await query
 
     if (error) {
-      console.error('Error obteniendo comunicados:', error)
+      console.error('Error obteniendo communications:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Total de comunicados
-    const total = comunicados?.length || 0
+    // Total de communications
+    const total = communications?.length || 0
 
     // Contar leídos y no leídos
-    const comunicadoIds = comunicados?.map((c: any) => c.id) || []
+    const communicationIds = communications?.map((c: any) => c.id) || []
     
-    const { data: lecturas, error: lecturasError } = await supabase
-      .from('comunicado_reads')
-      .select('comunicado_id, confirmado, read_at')
-      .in('comunicado_id', comunicadoIds)
+    // Tu tabla es communication_reads
+    const { data: reads, error: readsError } = await supabase
+      .from('communication_reads')
+      .select('communication_id, confirmed, read_at')
+      .in('communication_id', communicationIds)
 
-    if (lecturasError) {
-      console.error('Error obteniendo lecturas:', lecturasError)
+    if (readsError) {
+      console.error('Error obteniendo reads:', readsError)
     }
 
     // Calcular métricas
-    const leidos = lecturas?.filter((l: any) => l.read_at !== null).length || 0
+    const leidos = reads?.filter((l: any) => l.read_at !== null).length || 0
     const noLeidos = total - leidos
-    const confirmados = lecturas?.filter((l: any) => l.confirmado === true).length || 0
+    const confirmados = reads?.filter((l: any) => l.confirmed === true).length || 0
     const pendientesConfirmacion = leidos - confirmados
 
     // Tasa de lectura
@@ -68,19 +69,19 @@ export async function GET(request: Request) {
     // Agrupar por mes
     const porMes: Record<string, { total: number; leidos: number }> = {}
     
-    comunicados?.forEach((comunicado: any) => {
-      const mesKey = comunicado.created_at.substring(0, 7)
+    communications?.forEach((comm: any) => {
+      const mesKey = comm.created_at.substring(0, 7)
       if (!porMes[mesKey]) {
         porMes[mesKey] = { total: 0, leidos: 0 }
       }
       porMes[mesKey].total++
     })
 
-    lecturas?.forEach((lectura: any) => {
-      if (lectura.read_at) {
-        const comunicado = comunicados?.find((c: any) => c.id === lectura.comunicado_id)
-        if (comunicado) {
-          const mesKey = comunicado.created_at.substring(0, 7)
+    reads?.forEach((read: any) => {
+      if (read.read_at) {
+        const comm = communications?.find((c: any) => c.id === read.communication_id)
+        if (comm) {
+          const mesKey = comm.created_at.substring(0, 7)
           if (porMes[mesKey]) {
             porMes[mesKey].leidos++
           }
@@ -88,15 +89,15 @@ export async function GET(request: Request) {
       }
     })
 
-    // Comunicados recientes (últimos 5)
-    const recientes = comunicados
+    // Communications recientes (últimos 5)
+    const recientes = communications
       ?.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
       .map((c: any) => ({
         id: c.id,
-        titulo: c.titulo,
+        titulo: c.title,
         fecha: c.created_at,
-        leidos: lecturas?.filter((l: any) => l.comunicado_id === c.id && l.read_at).length || 0
+        leidos: reads?.filter((l: any) => l.communication_id === c.id && l.read_at).length || 0
       }))
 
     return NextResponse.json({

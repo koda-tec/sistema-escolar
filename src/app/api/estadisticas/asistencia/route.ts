@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     const { data: attendance, error } = await query
 
     if (error) {
-      console.error('Error obteniendo asistencia:', error)
+      console.error('Error obteniendo attendance:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
