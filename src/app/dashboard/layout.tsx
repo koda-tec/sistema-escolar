@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  // NORMALIZACIÓN
+  // Normalización para comparaciones seguras
   const userRole = profile?.role?.toLowerCase().trim() || ''
   const hasSchool = !!profile?.school_id
   const brandName = profile?.schools?.name || "KodaEd"
@@ -65,11 +65,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       
       {/* NAVBAR MÓVIL (HEADER SUPERIOR) */}
       <header className="md:hidden bg-slate-950 text-white px-4 pb-4 pt-[env(safe-area-inset-top,1.2rem)] flex justify-between items-center sticky top-0 z-60 border-b border-white/5 shadow-2xl">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 text-left">
           <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg">K</div>
           <div className="flex flex-col">
-            <span className="text-blue-500 font-black text-[9px] uppercase tracking-widest leading-none text-left">Institución</span>
-            <h2 className="font-black tracking-tighter uppercase text-[11px] truncate max-w-150px leading-tight text-left">
+            <span className="text-blue-500 font-black text-[9px] uppercase tracking-widest leading-none">Institución</span>
+            <h2 className="font-black tracking-tighter uppercase text-[11px] truncate max-w-160px leading-tight">
               {brandName}
             </h2>
           </div>
@@ -90,10 +90,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       `}>
         <div className="flex flex-col h-full border-r border-white/5">
           
-          {/* Logo Desktop */}
           <div className="p-8 hidden md:block">
             <div className="flex items-center gap-3 mb-6 font-black text-xl tracking-tighter uppercase italic text-white text-left">
-               Koda<span className="text-blue-600 font-black text-left">Ed</span>
+               Koda<span className="text-blue-600 font-black">Ed</span>
             </div>
             <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
                 <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 text-left">SaaS Node</p>
@@ -101,13 +100,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          {/* Navegación - pt-28 para móviles para que no lo tape el Header */}
           <nav className="flex-1 px-4 space-y-2 overflow-y-auto pt-28 md:pt-0 custom-scrollbar">
             
             <Link onClick={() => setSidebarOpen(false)} href="/dashboard" className={getLinkStyle('/dashboard')}>
               <span className="flex items-center gap-3"><span>🏠</span> Inicio</span>
             </Link>
             
+            {/* 1. ADMIN KODA */}
             {userRole === 'admin_koda' && (
               <>
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">SaaS Master</div>
@@ -117,14 +116,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </>
             )}
 
+            {/* 2. DIRECTIVO (Administración Escolar) */}
             {userRole === 'directivo' && hasSchool && (
               <>
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Dirección</div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/cursos" className={getLinkStyle('/dashboard/admin/cursos')}><span>🏫</span> Gestión Cursos</Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/personal" className={getLinkStyle('/dashboard/admin/personal')}><span>👨‍🏫</span> Gestión Personal</Link>
+                {/* REINSTALADO: Link de Estadísticas */}
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/estadisticas" className={getLinkStyle('/dashboard/admin/estadisticas')}><span>📊</span> Estadísticas</Link>
               </>
             )}
 
+            {/* 3. PRECEPTOR (Operación) */}
             {userRole === 'preceptor' && hasSchool && (
               <>
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Operación</div>
@@ -134,6 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </>
             )}
 
+            {/* 4. DOCENTE */}
             {userRole === 'docente' && hasSchool && (
                 <>
                   <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Aula</div>
@@ -141,34 +145,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </>
             )}
 
-            {/* SECCIÓN PADRE - Visible siempre */}
+            {/* 5. PADRE */}
             {userRole === 'padre' && (
               <>
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Familia</div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={getLinkStyle('/dashboard/hijos')}>
-                   <span>👨‍🎓</span> Mis Hijos
+                   <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
                 </Link>
               </>
             )}
 
-            {/* COMUNICADOS - Visible siempre para cualquier rol logueado */}
+            {/* SOCIAL (Comunicados) */}
             <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={getLinkStyle('/dashboard/comunicados')}>
                 <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
             </Link>
           </nav>
 
-          {/* Footer del Sidebar */}
+          {/* Footer Sidebar */}
           <div className="p-4 mt-auto mb-[env(safe-area-inset-bottom,1.5rem)]">
-            <div className="bg-white/5 rounded-2rem p-4 border border-white/5">
-              <div className="flex items-center gap-3 mb-4 text-left">
+            <div className="bg-white/5 rounded-2rem p-4 border border-white/5 shadow-inner text-left">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black text-blue-500 border border-white/10 uppercase">
                   {profile?.full_name?.charAt(0) || 'U'}
                 </div>
-                <div className="flex flex-col min-w-0 text-left">
-                  <p className="text-sm font-bold truncate text-white leading-tight text-left">{profile?.full_name || 'Usuario'}</p>
-                  <div className="flex items-center gap-1.5 mt-1 text-left">
+                <div className="flex flex-col min-w-0">
+                  <p className="text-sm font-bold truncate text-white leading-tight">{profile?.full_name || 'Usuario'}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest text-left">{profile?.role}</p>
+                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{profile?.role}</p>
                   </div>
                 </div>
               </div>
