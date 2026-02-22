@@ -176,14 +176,14 @@ export default function EstadisticasPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Porcentaje de Asistencia */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-2xl border border-green-200">
+            <div className="bg-linear-to-br from-green-50 to-green-100 p-6 rounded-2xl border border-green-200">
               <p className="text-sm text-green-700 mb-1">% Asistencia</p>
               <p className="text-4xl font-bold text-green-700">
                 {asistencia?.resumen?.porcentajeAsistencia ?? 0}%
               </p>
             </div>
             {/* Porcentaje de Ausentismo */}
-            <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-2xl border border-red-200">
+            <div className="bg-linear-to-br from-red-50 to-red-100 p-6 rounded-2xl border border-red-200">
               <p className="text-sm text-red-700 mb-1">% Ausentismo</p>
               <p className="text-4xl font-bold text-red-700">
                 {asistencia?.resumen?.porcentajeAusentismo ?? 0}%
@@ -268,14 +268,14 @@ export default function EstadisticasPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Total Comunicados */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200">
+            <div className="bg-linear-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200">
               <p className="text-sm text-blue-700 mb-1">Total Enviados</p>
               <p className="text-4xl font-bold text-blue-700">
                 {comunicados?.resumen?.total ?? 0}
               </p>
             </div>
             {/* Tasa de Lectura */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-2xl border border-green-200">
+            <div className="bg-linear-to-br from-green-50 to-green-100 p-6 rounded-2xl border border-green-200">
               <p className="text-sm text-green-700 mb-1">Tasa de Lectura</p>
               <p className="text-4xl font-bold text-green-700">
                 {comunicados?.resumen?.tasaLectura ?? 0}%

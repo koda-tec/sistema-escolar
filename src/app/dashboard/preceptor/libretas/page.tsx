@@ -347,7 +347,7 @@ export default function LibretasPage() {
                 <p>No hay libretas cargadas para este curso</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              <div className="space-y-3 max-h-500px overflow-y-auto">
                 {libretas.map((libreta) => (
                   <div 
                     key={libreta.id}
