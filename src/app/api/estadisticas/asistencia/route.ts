@@ -24,18 +24,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No tiene escuela asignada' }, { status: 400 })
     }
 
-    // Construir query base
+    // Query simple sin relaciones
     let query = supabase
       .from('attendance')
-      .select(`
-        id,
-        status,
-        date,
-        course:courses(name),
-        student:profiles!student_id(full_name, email)
-      `)
-      .gte('date', `${anio}-01-01`)
-      .lte('date', `${anio}-12-31`)
+      .select('id, status, date, course_id, student_id')
+
+    // Filtrar por año
+    if (anio) {
+      query = query.gte('date', `${anio}-01-01`)
+        .lte('date', `${anio}-12-31`)
+    }
 
     // Filtrar por curso si se especifica
     if (courseId) {
@@ -48,6 +46,30 @@ export async function GET(request: Request) {
       console.error('Error obteniendo attendance:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Obtener nombres de cursos
+    const courseIds = [...new Set(attendance?.map((a: any) => a.course_id).filter(Boolean) || [])]
+    const { data: coursesData } = await supabase
+      .from('courses')
+      .select('id, name')
+      .in('id', courseIds)
+
+    const courseMap: Record<string, string> = {}
+    coursesData?.forEach((c: any) => {
+      courseMap[c.id] = c.name
+    })
+
+    // Obtener nombres de estudiantes
+    const studentIds = [...new Set(attendance?.map((a: any) => a.student_id).filter(Boolean) || [])]
+    const { data: studentsData } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', studentIds)
+
+    const studentMap: Record<string, string> = {}
+    studentsData?.forEach((s: any) => {
+      studentMap[s.id] = s.full_name
+    })
 
     // Calcular estadísticas
     const totalRegistros = attendance?.length || 0
@@ -64,25 +86,12 @@ export async function GET(request: Request) {
       ? Math.round((ausentes / totalRegistros) * 100) 
       : 0
 
-    // Agrupar por mes
-    const porMes: Record<string, { presentes: number; ausentes: number; total: number }> = {}
-    
-    attendance?.forEach((registro: any) => {
-      const mesKey = registro.date.substring(0, 7)
-      if (!porMes[mesKey]) {
-        porMes[mesKey] = { presentes: 0, ausentes: 0, total: 0 }
-      }
-      porMes[mesKey].total++
-      if (registro.status === 'presente') porMes[mesKey].presentes++
-      if (registro.status === 'ausente') porMes[mesKey].ausentes++
-    })
-
     // Top 5 de alumnos con más ausencias
     const ausenciasPorAlumno: Record<string, number> = {}
     attendance?.forEach((registro: any) => {
       if (registro.status === 'ausente') {
-        const key = registro.student?.full_name || 'Desconocido'
-        ausenciasPorAlumno[key] = (ausenciasPorAlumno[key] || 0) + 1
+        const nombre = studentMap[registro.student_id] || 'Desconocido'
+        ausenciasPorAlumno[nombre] = (ausenciasPorAlumno[nombre] || 0) + 1
       }
     })
 
@@ -101,7 +110,6 @@ export async function GET(request: Request) {
         porcentajeAsistencia,
         porcentajeAusentismo
       },
-      porMes,
       topAusentes
     })
 
