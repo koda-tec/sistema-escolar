@@ -23,7 +23,7 @@
     {
       "src": "/screenshots/mobile.jpeg",
       "sizes": "750x1334",
-      "type": "image/png",
+      "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Seguimiento académico en tu celular"
     },
