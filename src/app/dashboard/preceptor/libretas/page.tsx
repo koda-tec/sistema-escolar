@@ -38,7 +38,7 @@ export default function LibretasPage() {
     fetchCursos()
   }, [])
 
-  // Cargar alumnos cuando se selecciona un curso
+  // Cargar alumnos cuando se selecciona un curso (Corregido para la estructura KodaEd)
   useEffect(() => {
     const fetchAlumnos = async () => {
       if (!selectedCurso) {
@@ -46,34 +46,20 @@ export default function LibretasPage() {
         return
       }
 
-      // Obtener los estudiantes del curso
-      const { data: courseStudents, error: csError } = await supabase
-        .from('course_students')
-        .select('student_id')
+      // Traemos los alumnos directamente de la tabla 'students' 
+      // filtrando por el ID del curso seleccionado
+      const { data: studentsData, error } = await supabase
+        .from('students')
+        .select('id, full_name, dni')
         .eq('course_id', selectedCurso)
+        .order('full_name', { ascending: true })
 
-      if (csError) {
-        console.error('Error cargando estudiantes:', csError)
-        return
-      }
-
-      if (!courseStudents || courseStudents.length === 0) {
-        setAlumnos([])
-        return
-      }
-
-      // Obtener los perfiles de los estudiantes
-      const studentIds = courseStudents.map(cs => cs.student_id)
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', studentIds)
-        .eq('role', 'estudiante')
-
-      if (profilesError) {
-        console.error('Error cargando perfiles:', profilesError)
+      if (error) {
+        console.error('Error cargando alumnos:', error)
+        toast.error('Error al cargar la lista de alumnos')
       } else {
-        setAlumnos(profiles || [])
+        // Ahora 'alumnos' contendrá la lista de objetos con id y full_name
+        setAlumnos(studentsData || [])
       }
     }
 

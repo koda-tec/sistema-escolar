@@ -1,7 +1,9 @@
-
 import { NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import { createClient as createClientAdmin } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/app/utils/supabase/admin' // Usamos nuestra utilidad pro
+
+// 1. FORZAR DINÁMICO: Crucial para que Vercel no falle al compilar
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
@@ -12,109 +14,102 @@ export async function POST(request: Request) {
     const trimestre = formData.get('trimestre') as string
     const anio = formData.get('anio') as string
 
+    // Validaciones de datos
     if (!file || !courseId || !studentId || !trimestre || !anio) {
-      return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
+      return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 })
     }
 
-    // Validar que sea PDF
     if (file.type !== 'application/pdf') {
       return NextResponse.json({ error: 'Solo se permiten archivos PDF' }, { status: 400 })
     }
 
-    // Obtener usuario actual
+    // 2. Verificar sesión del usuario que sube (Preceptor/Directivo)
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (!user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Sesión expirada o no autorizada' }, { status: 401 })
     }
 
-    // Generar nombre único para el archivo
-    const fileName = `${courseId}/${studentId}/trimestre-${trimestre}-${anio}-${Date.now()}.pdf`
+    // 3. Inicializar Supabase Admin de forma segura (Lazy load)
+    const supabaseAdmin = getSupabaseAdmin()
 
-    // Subir archivo a Supabase Storage
-    const supabaseAdmin = createClientAdmin(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // 4. Lógica SaaS: Obtener el school_id del alumno para que la libreta quede bien etiquetada
+    const { data: student, error: studentError } = await supabaseAdmin
+      .from('students')
+      .select('school_id')
+      .eq('id', studentId)
+      .single()
 
+    if (studentError || !student) {
+      return NextResponse.json({ error: 'No se encontró el alumno o su institución' }, { status: 404 })
+    }
+
+    // 5. Preparar archivo para Storage
+    // Estructura de carpetas pro: school_id / curso_id / alumno_id / trimestre.pdf
+    const fileName = `${student.school_id}/${courseId}/${studentId}/T${trimestre}-${anio}-${Date.now()}.pdf`
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Subir al Bucket 'libretas'
     const { error: uploadError } = await supabaseAdmin.storage
       .from('libretas')
-      .upload(fileName, file, {
+      .upload(fileName, buffer, {
         contentType: 'application/pdf',
         upsert: true
       })
 
     if (uploadError) {
-      console.error('Error subiendo archivo:', uploadError)
-      return NextResponse.json({ error: 'Error al subir archivo' }, { status: 500 })
+      console.error('Error Storage:', uploadError)
+      return NextResponse.json({ error: 'Error al subir el archivo físico' }, { status: 500 })
     }
 
-    // Obtener URL pública del archivo
+    // 6. Obtener URL pública
     const { data: { publicUrl } } = supabaseAdmin.storage
       .from('libretas')
       .getPublicUrl(fileName)
 
-    // Guardar registro en la base de datos
-    const supabaseClient = createClientAdmin(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    // Verificar si ya existe una libreta para este alumno, curso, trimestre y año
-    const { data: existing } = await supabaseClient
+    // 7. Registro en DB (Upsert manual)
+    // Buscamos si ya existe una libreta para este periodo
+    const { data: existing } = await supabaseAdmin
       .from('libretas')
       .select('id')
-      .eq('course_id', courseId)
       .eq('student_id', studentId)
-      .eq('trimestre', parseInt(trimestre))
-      .eq('anio', parseInt(anio))
-      .single()
+      .eq('trimestre', trimestre)
+      .eq('anio', anio)
+      .maybeSingle()
+
+    const dbPayload = {
+      school_id: student.school_id,
+      course_id: courseId,
+      student_id: studentId,
+      trimestre: trimestre,
+      anio: anio,
+      archivo_url: publicUrl,
+      archivo_nombre: file.name,
+      uploaded_by: user.id,
+      updated_at: new Date().toISOString()
+    }
 
     let result
     if (existing) {
-      // Actualizar libreta existente
-      result = await supabaseClient
-        .from('libretas')
-        .update({
-          archivo_url: publicUrl,
-          archivo_nombre: file.name,
-          uploaded_by: user.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existing.id)
-        .select()
-        .single()
+      result = await supabaseAdmin.from('libretas').update(dbPayload).eq('id', existing.id).select()
     } else {
-      // Crear nueva libreta
-      result = await supabaseClient
-        .from('libretas')
-        .insert({
-          course_id: courseId,
-          student_id: studentId,
-          trimestre: parseInt(trimestre),
-          anio: parseInt(anio),
-          archivo_url: publicUrl,
-          archivo_nombre: file.name,
-          uploaded_by: user.id
-        })
-        .select()
-        .single()
+      result = await supabaseAdmin.from('libretas').insert(dbPayload).select()
     }
 
     if (result.error) {
-      console.error('Error guardando registro:', result.error)
-      return NextResponse.json({ error: 'Error al guardar libreta' }, { status: 500 })
+      throw result.error
     }
 
     return NextResponse.json({ 
       success: true, 
-      libreta: result.data,
-      url: publicUrl
+      message: 'Libreta procesada correctamente',
+      url: publicUrl 
     })
 
   } catch (error: any) {
-    console.error('Error general:', error)
+    console.error('Crash en API Libretas:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
