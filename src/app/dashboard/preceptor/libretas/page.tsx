@@ -78,7 +78,7 @@ export default function LibretasPage() {
         .from('libretas')
         .select(`
           *,
-          student:student_id(full_name, email),
+          student:student_id(full_name),
           course:course_id(name)
         `)
         .eq('course_id', selectedCurso)
@@ -140,7 +140,7 @@ export default function LibretasPage() {
           .from('libretas')
           .select(`
             *,
-            student:student_id(full_name, email),
+            student:student_id(full_name),
             course:course_id(name)
           `)
           .eq('course_id', selectedCurso)
