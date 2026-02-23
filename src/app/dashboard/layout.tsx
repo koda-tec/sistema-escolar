@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-slate-900 overflow-x-hidden">
       
       {/* NAVBAR MÓVIL (HEADER SUPERIOR) */}
-      <header className="md:hidden bg-slate-950 text-white px-4 pb-4 pt-[env(safe-area-inset-top,1.2rem)] flex justify-between items-center sticky top-0 z-60 border-b border-white/5 shadow-2xl">
+        <header className="md:hidden bg-slate-950 text-white px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] flex justify-between items-center sticky top-0 z-60 border-b border-white/5 shadow-2xl">
         <div className="flex items-center gap-3 text-left">
           <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg">K</div>
           <div className="flex flex-col">
