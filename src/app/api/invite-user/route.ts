@@ -3,8 +3,11 @@ import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { validatePassword } from '@/app/utils/passwordValidator'
 import { Resend } from 'resend'
 
-// Inicializar Resend
+// Inicializar Resend - verificar que existe la API key
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+console.log('🔍 RESEND_API_KEY existe:', !!process.env.RESEND_API_KEY)
+console.log('🔍 RESEND_API_KEY valor:', process.env.RESEND_API_KEY?.substring(0, 10) + '...')
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +16,8 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin()
 
     const { email, fullName, role, schoolId, password } = await request.json()
+
+    console.log('📧 Intentando crear usuario:', email)
 
     // Validaciones básicas
     if (!email || !fullName || !role || !schoolId || !password) {
@@ -36,7 +41,10 @@ export async function POST(request: Request) {
     // 1. Buscar si el usuario ya existe en Auth
     const { data: userData, error: listError } = await supabaseAdmin.auth.admin.listUsers()
     
-    if (listError) throw listError
+    if (listError) {
+      console.error('❌ Error listando usuarios:', listError)
+      throw listError
+    }
 
     const existingUser = userData?.users.find(u => u.email === email)
 
@@ -58,6 +66,7 @@ export async function POST(request: Request) {
       })
 
       if (authError) {
+        console.error('❌ Error creando usuario en Auth:', authError)
         return NextResponse.json({ error: authError.message }, { status: 400 })
       }
 
@@ -66,6 +75,7 @@ export async function POST(request: Request) {
       }
 
       userId = authData.user.id
+      console.log('✅ Usuario creado en Auth:', userId)
     }
 
     // 3. Crear o actualizar el perfil
@@ -80,23 +90,27 @@ export async function POST(request: Request) {
       }, { onConflict: 'id' })
 
     if (profileError) {
-      console.error('Error creando perfil:', profileError)
+      console.error('❌ Error creando perfil:', profileError)
       return NextResponse.json({ error: profileError.message }, { status: 400 })
     }
+
+    console.log('✅ Perfil creado en Supabase')
 
     // 4. Enviar email de bienvenida
     const roleLabel = role === 'docente' ? 'Profesor' : 'Preceptor'
     
-   // Cambiá esta parte del código:
-
     try {
-      await sendWelcomeEmail({
+      console.log('📧 Enviando email de bienvenida...')
+      console.log('📧 Destinatario:', email)
+      
+      const result = await sendWelcomeEmail({
         email,
         fullName,
         password,
         role: roleLabel
       })
-      console.log('✅ Email enviado exitosamente')
+      
+      console.log('✅ Email enviado exitosamente:', result)
     } catch (emailError) {
       console.error('❌ Error enviando email:', emailError)
     }
@@ -107,7 +121,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
-    console.error('Error en invite-user route:', error.message)
+    console.error('❌ Error general:', error.message)
     return NextResponse.json(
       { error: error.message || 'Error interno del servidor' },
       { status: 500 }
@@ -124,7 +138,10 @@ async function sendWelcomeEmail({ email, fullName, password, role }: {
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tu-app.vercel.app'
 
-  const { error } = await resend.emails.send({
+  console.log('📧 Enviando con Resend a:', email)
+  console.log('📧 API Key configurada:', !!process.env.RESEND_API_KEY)
+
+  const { data, error } = await resend.emails.send({
     from: 'KodaEd <onboarding@resend.dev>',
     to: [email],
     subject: '👋 Bienvenido a KodaEd - Tus credenciales de acceso',
@@ -162,12 +179,6 @@ async function sendWelcomeEmail({ email, fullName, password, role }: {
                 Iniciar Sesión →
               </a>
             </div>
-            
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-            
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-              Si no solicitaste esta cuenta, por favor ignorá este email.
-            </p>
           </div>
         </body>
       </html>
@@ -175,7 +186,9 @@ async function sendWelcomeEmail({ email, fullName, password, role }: {
   })
 
   if (error) {
-    console.error('Error de Resend:', error)
+    console.error('❌ Error de Resend:', error)
     throw error
   }
+
+  return data
 }
