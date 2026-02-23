@@ -1,51 +1,41 @@
+// src/components/dashboards/DashboardDocente.tsx
 import { createClient } from "@/app/utils/supabase/server";
 
 export default async function DashboardDocente({ profile }: { profile: any }) {
   const supabase = await createClient();
-
-  // 1. Contar materias que dicta este docente
-  const { count: totalMaterias } = await supabase
-    .from('profesor_materia')
-    .select('*', { count: 'exact', head: true })
-    .eq('profesor_id', profile.id);
-
-  // 2. Contar comunicados enviados por él
-  const { count: totalEnviados } = await supabase
-    .from('communications')
-    .select('*', { count: 'exact', head: true })
-    .eq('sender_id', profile.id);
+  const { data: materias } = await supabase.from('profesor_materia').select('id, materias(name), courses(name, section)').eq('profesor_id', profile.id);
+  const { count: sentComm } = await supabase.from('communications').select('*', { count: 'exact', head: true }).eq('sender_id', profile.id);
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-8 rounded-2rem border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-blue-600 bg-blue-50 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Actividad Académica</span>
-            <span className="text-2xl">📓</span>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
+        <div className="bg-slate-950 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-[100px]"></div>
+          <h2 className="text-3xl font-black tracking-tighter mb-2">Resumen Académico</h2>
+          <p className="text-slate-400 font-medium mb-8">Tenés {materias?.length || 0} materias activas en este ciclo.</p>
+          <div className="grid grid-cols-2 gap-4">
+             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <p className="text-[10px] font-bold text-blue-400 uppercase mb-1">Materias</p>
+                <p className="text-2xl font-black">{materias?.length || 0}</p>
+             </div>
+             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <p className="text-[10px] font-bold text-indigo-400 uppercase mb-1">Avisos Enviados</p>
+                <p className="text-2xl font-black">{sentComm || 0}</p>
+             </div>
           </div>
-          <p className="text-5xl font-black text-slate-900">{totalMaterias || 0}</p>
-          <p className="text-slate-400 text-sm font-bold mt-2 uppercase">Materias a cargo</p>
-        </div>
-
-        <div className="bg-white p-8 rounded-2rem border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Comunicación</span>
-            <span className="text-2xl">📩</span>
-          </div>
-          <p className="text-5xl font-black text-slate-900">{totalEnviados || 0}</p>
-          <p className="text-slate-400 text-sm font-bold mt-2 uppercase">Avisos enviados</p>
         </div>
       </div>
-
-      {/* Sección de accesos rápidos para el docente */}
-      <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6">
-        <div>
-          <h3 className="text-xl font-bold mb-2">¿Necesitás enviar una novedad?</h3>
-          <p className="text-slate-400 text-sm">Podés publicar avisos específicos para tus materias desde la sección de comunicados.</p>
+      
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Mis Clases</h3>
+        <div className="space-y-3">
+          {materias?.map((m: any) => (
+            <div key={m.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+              <span className="font-bold text-slate-800 text-sm">{(m.materias as any)?.name}</span>
+              <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-2 py-1 rounded-lg">{(m.courses as any)?.name}</span>
+            </div>
+          ))}
         </div>
-        <a href="/dashboard/comunicados/nuevo" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap">
-          Redactar Aviso
-        </a>
       </div>
     </div>
   );
