@@ -87,6 +87,8 @@ export async function POST(request: Request) {
     // 4. Enviar email de bienvenida
     const roleLabel = role === 'docente' ? 'Profesor' : 'Preceptor'
     
+   // Cambiá esta parte del código:
+
     try {
       await sendWelcomeEmail({
         email,
@@ -94,9 +96,9 @@ export async function POST(request: Request) {
         password,
         role: roleLabel
       })
+      console.log('✅ Email enviado exitosamente')
     } catch (emailError) {
-      console.error('Error enviando email:', emailError)
-      // No fallar todo el proceso si el email falla
+      console.error('❌ Error enviando email:', emailError)
     }
     
     return NextResponse.json({ 
