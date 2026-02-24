@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useToast } from '@/app/components/Toast'
 import Link from 'next/link'
+import PaywallGate from '@/app/components/PaywallGate'
 
 export default function MisHijosPage() {
   const [hijos, setHijos] = useState<any[]>([])
+  const [profile, setProfile] = useState<any>(null) 
   const [loading, setLoading] = useState(true)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const { showToast } = useToast()
@@ -49,7 +51,12 @@ export default function MisHijosPage() {
       </div>
     )
   }
+const isPaid = profile?.subscription_active;
 
+if (profile?.role === 'padre' && !isPaid) {
+  // En lugar de mostrar la lista, mostramos el componente de bloqueo
+  return <PaywallGate />; 
+}
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <header>

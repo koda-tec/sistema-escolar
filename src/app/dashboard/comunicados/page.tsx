@@ -2,9 +2,12 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import Link from 'next/link'
+import PaywallGate from '@/app/components/PaywallGate'
+
 
 export default function ComunicadosPage() {
   const [comunicados, setComunicados] = useState<any[]>([])
+  const [profile, setProfile] = useState<any>(null) // NUEVO: Estado para el perfil
   const [role, setRole] = useState('')
   const supabase = createClient()
 
@@ -24,6 +27,12 @@ export default function ComunicadosPage() {
     }
     fetchData()
   }, [])
+
+// ... obtener perfil ...
+if (profile?.role === 'padre' && !profile?.subscription_active) {
+  return <PaywallGate />;
+}
+
 
   return (
     <div className="space-y-8">
