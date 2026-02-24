@@ -7,7 +7,7 @@ import { useToast } from '@/app/components/Toast'
 export default function NuevoComunicado() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [targetType, setTargetType] = useState('toda-la-escuela') // valor por defecto acorde a restricción
+  const [targetType, setTargetType] = useState('toda-la-escuela')
   const [targetId, setTargetId] = useState('')
   const [selectedParents, setSelectedParents] = useState<string[]>([])
   const [confirm, setConfirm] = useState(false)
@@ -113,19 +113,7 @@ export default function NuevoComunicado() {
   }
 
   if (loadingData) {
-    return (
-      <div className="max-w-3xl mx-auto space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900">Redactar Comunicado</h1>
-        <div className="bg-white p-8 rounded-2rem border border-slate-200 shadow-sm space-y-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-            <div className="h-12 bg-slate-200 rounded"></div>
-            <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-            <div className="h-32 bg-slate-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    )
+    return <p>Cargando información...</p>
   }
 
   return (
@@ -135,30 +123,30 @@ export default function NuevoComunicado() {
       <form onSubmit={handleSend} className="bg-white p-8 rounded-2rem border border-slate-200 shadow-sm space-y-6">
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Asunto / Título</label>
-          <input 
-            value={title} 
-            onChange={e => setTitle(e.target.value)} 
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
             className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
             placeholder="Ej: Reunión de padres"
-            required 
+            required
           />
         </div>
 
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Contenido del mensaje</label>
-          <textarea 
-            value={content} 
-            onChange={e => setContent(e.target.value)} 
-            rows={6} 
+          <textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            rows={6}
             className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
             placeholder="Escribí el comunicado..."
-            required 
+            required
           />
         </div>
 
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-3 block">Enviar a</label>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <button
               type="button"
@@ -166,7 +154,7 @@ export default function NuevoComunicado() {
               className={`p-4 rounded-2xl border-2 text-center ${targetType === 'toda-la-escuela' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
             >
               <span className="text-2xl">🏢</span>
-              <p className="text-xs font-bold mt-1">Toda la escuela</p>
+              <p className="text-xs font-bold mt-1">Toda la Escuela</p>
             </button>
 
             <button
@@ -189,7 +177,7 @@ export default function NuevoComunicado() {
           </div>
         </div>
 
-        {/* Selector para Curso */}
+        {/* Selectores de curso o padres según targetType */}
         {targetType === 'curso' && (
           <div>
             <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-2 block">Seleccionar curso</label>
@@ -208,7 +196,6 @@ export default function NuevoComunicado() {
           </div>
         )}
 
-        {/* Selector para Padres */}
         {targetType === 'alumno-especifico' && (
           <div>
             <div className="flex justify-between items-center mb-2">
@@ -226,21 +213,21 @@ export default function NuevoComunicado() {
                 <p className="text-slate-500 text-sm text-center py-4">No hay padres registrados</p>
               ) : (
                 padres.map(padre => (
-                  <label 
-                    key={padre.id} 
+                  <label
+                    key={padre.id}
                     className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedParents.includes(padre.id) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'}`}
                   >
-                    <input 
-                      type="checkbox" 
-                      checked={selectedParents.includes(padre.id)} 
+                    <input
+                      type="checkbox"
+                      checked={selectedParents.includes(padre.id)}
                       onChange={() => {
-                        if(selectedParents.includes(padre.id)) {
+                        if (selectedParents.includes(padre.id)) {
                           setSelectedParents(selectedParents.filter(id => id !== padre.id))
                         } else {
                           setSelectedParents([...selectedParents, padre.id])
                         }
-                      }} 
-                      className="w-5 h-5 accent-blue-600 rounded" 
+                      }}
+                      className="w-5 h-5 accent-blue-600 rounded"
                     />
                     <div>
                       <p className="text-sm font-bold text-slate-900">{padre.full_name}</p>
@@ -254,22 +241,22 @@ export default function NuevoComunicado() {
           </div>
         )}
 
-        {/* Solicitar confirmación de lectura */}
+        {/* Confirmación */}
         <div className="flex items-center gap-3 pt-2">
-          <input 
-            type="checkbox" 
-            checked={confirm} 
-            onChange={e => setConfirm(e.target.checked)} 
-            className="w-5 h-5 accent-blue-600 rounded" 
-            id="confirm" 
+          <input
+            type="checkbox"
+            checked={confirm}
+            onChange={e => setConfirm(e.target.checked)}
+            className="w-5 h-5 accent-blue-600 rounded"
+            id="confirm"
           />
           <label htmlFor="confirm" className="text-sm font-bold text-slate-700 cursor-pointer">
             Solicitar confirmación de lectura
           </label>
         </div>
 
-        {/* Botón publicar */}
-        <button 
+        {/* Botón */}
+        <button
           type="submit"
           disabled={loading}
           className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 disabled:opacity-50"
