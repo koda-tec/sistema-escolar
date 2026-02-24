@@ -31,9 +31,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       setProfile(profileData)
       setLoading(false)
+
+      // CONTROL: Si debe cambiar contraseña, redirigir automáticamente
+      const isChangingPassPage = pathname.startsWith('/dashboard/perfil/cambiar-password')
+      
+      if (profileData?.must_change_password && !isChangingPassPage) {
+        router.push('/dashboard/perfil/cambiar-password')
+      }
     }
     getData()
-  }, [router, supabase])
+  }, [router, supabase, pathname])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -44,6 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userRole = profile?.role?.toLowerCase().trim() || ''
   const hasSchool = !!profile?.school_id
   const brandName = profile?.schools?.name || "KodaEd"
+  const mustChangePassword = profile?.must_change_password || false
 
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path
@@ -60,6 +68,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   )
 
+  // SI DEBE CAMBIAR CONTRASEÑA: Mostrar solo el contenido sin menú
+  if (mustChangePassword) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          {children}
+        </div>
+      </div>
+    )
+  }
+
+  // NORMAL: Mostrar menú completo
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-slate-900 overflow-x-hidden">
       
@@ -122,7 +142,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest text-left">Dirección</div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/cursos" className={getLinkStyle('/dashboard/admin/cursos')}><span>🏫</span> Gestión Cursos</Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/personal" className={getLinkStyle('/dashboard/admin/personal')}><span>👨‍🏫</span> Gestión Personal</Link>
-                {/* REINSTALADO: Link de Estadísticas */}
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/estadisticas" className={getLinkStyle('/dashboard/admin/estadisticas')}><span>📊</span> Estadísticas</Link>
               </>
             )}
