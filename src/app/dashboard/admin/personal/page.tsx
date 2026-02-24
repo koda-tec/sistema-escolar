@@ -4,7 +4,11 @@ import { createClient } from '@/app/utils/supabase/client'
 import toast from 'react-hot-toast'
 
 export default function GestionPersonal() {
+  // --- ESTADOS ---
   const [personal, setPersonal] = useState<any[]>([])
+  const [cursosDisponibles, setCursosDisponibles] = useState<any[]>([])
+  const [cursosSeleccionados, setCursosSeleccionados] = useState<string[]>([])
+  
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<'preceptor' | 'docente'>('docente')
@@ -13,26 +17,43 @@ export default function GestionPersonal() {
   
   const supabase = createClient()
 
+  // --- CARGA DE DATOS ---
   useEffect(() => {
-    fetchPersonal()
+    fetchInitialData()
   }, [])
 
-  async function fetchPersonal() {
+  async function fetchInitialData() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
 
     if (!profile?.school_id) return
 
-    const { data } = await supabase
+    // 1. Cargar Personal existente
+    const { data: pers } = await supabase
       .from('profiles')
       .select('*')
       .eq('school_id', profile.school_id)
       .in('role', ['preceptor', 'docente'])
       .order('full_name', { ascending: true })
-    
-    setPersonal(data || [])
+    setPersonal(pers || [])
+
+    // 2. Cargar Cursos de la escuela para asignar
+    const { data: curs } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('school_id', profile.school_id)
+      .order('name')
+    setCursosDisponibles(curs || [])
   }
 
+  // --- LÓGICA DE SELECCIÓN ---
+  const toggleCurso = (id: string) => {
+    setCursosSeleccionados(prev => 
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    )
+  }
+
+  // --- ACCIÓN DE CREAR ---
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -54,7 +75,9 @@ export default function GestionPersonal() {
         fullName,
         role,
         schoolId: directorProfile.school_id,
-        password
+        password,
+        // Solo enviamos cursos si el rol es preceptor
+        assignedCourses: role === 'preceptor' ? cursosSeleccionados : [] 
       })
     })
 
@@ -64,86 +87,116 @@ export default function GestionPersonal() {
       toast.error(result.error)
     } else {
       toast.success(result.message)
+      // Resetear campos
       setEmail('')
       setFullName('')
       setPassword('')
-      fetchPersonal()
+      setCursosSeleccionados([])
+      fetchInitialData() // Refrescar lista
     }
 
     setLoading(false)
   }
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      <h1 className="text-2xl font-bold text-slate-900">Gestión de Personal</h1>
+    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
+      <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Gestión de Personal</h1>
 
-      <form onSubmit={handleCreate} className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="md:col-span-2 lg:col-span-4 text-sm font-bold text-blue-600 border-b pb-2 uppercase tracking-wider mb-2">
+      {/* FORMULARIO */}
+      <form onSubmit={handleCreate} className="bg-white p-5 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-200 space-y-6">
+        <div className="text-sm font-bold text-blue-600 border-b pb-2 uppercase tracking-wider mb-2">
           Crear Nuevo Miembro
         </div>
 
-        <div>
-          <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Nombre Completo</label>
-          <input 
-            type="text" 
-            value={fullName} 
-            onChange={e => setFullName(e.target.value)} 
-            className="w-full mt-1 p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" 
-            placeholder="Juan Pérez" 
-            required 
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Nombre Completo</label>
+            <input 
+              type="text" 
+              value={fullName} 
+              onChange={e => setFullName(e.target.value)} 
+              className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" 
+              placeholder="Juan Pérez" 
+              required 
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Email</label>
+            <input 
+              type="email" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" 
+              placeholder="profesor@email.com" 
+              required 
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Contraseña Provisoria</label>
+            <input 
+              type="text" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" 
+              placeholder="Mínimo 6 caracteres" 
+              minLength={6}
+              required 
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Rol</label>
+            <select 
+              value={role} 
+              onChange={e => setRole(e.target.value as 'preceptor' | 'docente')} 
+              className="w-full p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900"
+            >
+              <option value="docente">Profesor</option>
+              <option value="preceptor">Preceptor</option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Email</label>
-          <input 
-            type="email" 
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
-            className="w-full mt-1 p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" 
-            placeholder="profesor@email.com" 
-            required 
-          />
-        </div>
+        {/* ASIGNACIÓN DE CURSOS (Solo para Preceptores) */}
+        {role === 'preceptor' && (
+          <div className="space-y-4 pt-4 border-t border-slate-100 animate-in slide-in-from-top-2 duration-300">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Asignar Cursos a cargo:</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {cursosDisponibles.map(curso => (
+                <button
+                  key={curso.id}
+                  type="button"
+                  onClick={() => toggleCurso(curso.id)}
+                  className={`p-3 rounded-xl text-[10px] font-black transition-all border ${
+                    cursosSeleccionados.includes(curso.id)
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
+                      : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100'
+                  }`}
+                >
+                  {curso.name} "{curso.section}"
+                  <span className="block opacity-60 font-medium lowercase italic">{curso.shift || 'mañana'}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <div>
-          <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Contraseña Provisoria</label>
-          <input 
-            type="text" 
-            value={password} 
-            onChange={e => setPassword(e.target.value)} 
-            className="w-full mt-1 p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900" 
-            placeholder="Mínimo 6 caracteres" 
-            minLength={6}
-            required 
-          />
-        </div>
-
-        <div>
-          <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Rol</label>
-          <select 
-            value={role} 
-            onChange={e => setRole(e.target.value as 'preceptor' | 'docente')} 
-            className="w-full mt-1 p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900"
-          >
-            <option value="docente">Profesor</option>
-            <option value="preceptor">Preceptor</option>
-          </select>
-        </div>
-
-        <div className="md:col-span-2 lg:col-span-4">
+        <div className="pt-2">
           <button 
             disabled={loading}
-            className="w-full md:w-auto bg-blue-600 text-white py-3 px-8 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95 disabled:opacity-50"
+            className="w-full md:w-auto bg-slate-900 text-white py-4 px-10 rounded-2xl font-bold hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50"
           >
-            {loading ? 'Creando...' : '➕ Crear Usuario'}
+            {loading ? 'Procesando...' : '➕ Confirmar y Enviar Acceso'}
           </button>
         </div>
       </form>
 
-      <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
+      {/* TABLA DE PERSONAL */}
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-500px">
+          <table className="w-full text-left min-w-600px">
             <thead className="bg-slate-50 border-b text-[11px] uppercase text-slate-900 font-black">
               <tr>
                 <th className="p-4 md:p-6">Nombre</th>

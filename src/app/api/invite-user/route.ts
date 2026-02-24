@@ -9,9 +9,10 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   try {
     const supabaseAdmin = getSupabaseAdmin()
-    const { email, fullName, role, schoolId, password } = await request.json()
+    // 1. Extraemos assignedCourses del body
+    const { email, fullName, role, schoolId, password, assignedCourses } = await request.json()
 
-    // 1. Validaciones de entrada
+    // Validaciones de entrada
     if (!email || !fullName || !role || !schoolId || !password) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 })
     }
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       userId = authData.user!.id
     }
 
-    // 3. Crear o actualizar perfil con la bandera 'must_change_password'
+    // 3. Crear o actualizar perfil
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
@@ -52,12 +53,40 @@ export async function POST(request: Request) {
         full_name: fullName,
         role: role,
         school_id: schoolId,
-        must_change_password: true // Esto obligará al docente a cambiarla al entrar
+        must_change_password: true 
       }, { onConflict: 'id' })
 
     if (profileError) throw profileError
 
-    // 4. ENVÍO DE EMAIL DE BIENVENIDA (MARCA KodaEd)
+    // 4. NUEVA LÓGICA: Asignación de Cursos para Preceptores
+    // Solo se ejecuta si el rol es preceptor y hay cursos seleccionados
+    if (role === 'preceptor' && assignedCourses && Array.isArray(assignedCourses)) {
+      
+      // Limpiamos asignaciones previas para evitar duplicados o basura en actualizaciones
+      await supabaseAdmin
+        .from('preceptor_courses')
+        .delete()
+        .eq('preceptor_id', userId)
+
+      if (assignedCourses.length > 0) {
+        const vinculos = assignedCourses.map((courseId: string) => ({
+          preceptor_id: userId,
+          course_id: courseId,
+          school_id: schoolId
+        }))
+
+        const { error: linkError } = await supabaseAdmin
+          .from('preceptor_courses')
+          .insert(vinculos)
+        
+        if (linkError) {
+            console.error('Error vinculando cursos:', linkError.message)
+            throw new Error('Error al asignar los cursos al preceptor')
+        }
+      }
+    }
+
+    // 5. ENVÍO DE EMAIL DE BIENVENIDA (MARCA KodaEd)
     const roleLabel = role === 'docente' ? 'Profesor/a' : 'Preceptor/a'
     const loginUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login`
 
@@ -77,7 +106,7 @@ export async function POST(request: Request) {
             <p>Se ha creado exitosamente tu cuenta de <strong>${roleLabel}</strong> en nuestra plataforma institucional.</p>
             
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; margin: 25px 0;">
-              <p style="margin: 0 0 10px 0; color: #64748b; font-size: 12px; font-weight: bold; uppercase;">Tus credenciales de acceso:</p>
+              <p style="margin: 0 0 10px 0; color: #64748b; font-size: 12px; font-weight: bold; text-transform: uppercase;">Tus credenciales de acceso:</p>
               <p style="margin: 0; font-size: 16px;"><strong>Email:</strong> ${email}</p>
               <p style="margin: 5px 0 0 0; font-size: 16px;"><strong>Contraseña:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${password}</code></p>
             </div>
@@ -101,7 +130,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `✅ Perfil creado y correo enviado a ${email}.` 
+      message: `✅ Perfil creado y cursos asignados correctamente.` 
     })
 
   } catch (error: any) {
