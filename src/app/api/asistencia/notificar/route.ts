@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       if (!emailPadre) return null
 
       return resend.emails.send({
-        from: 'KodaEd <alertas@kodatec.app>',
+        from: 'Asistencia KodaEd <alertas@kodatec.app>',
         to: [emailPadre],
         subject: `⚠️ Aviso de Inasistencia: ${nombreAlumno}`,
         html: `
