@@ -22,7 +22,7 @@ export default function NuevoComunicado() {
   const { showToast } = useToast()
 
   useEffect(() => {
-    const fetchData = async () => {
+    async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser()
       const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).single()
 
@@ -51,7 +51,7 @@ export default function NuevoComunicado() {
     fetchData()
   }, [])
 
-  const handleSend = async (e: React.FormEvent) => {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
 
@@ -98,40 +98,37 @@ export default function NuevoComunicado() {
     router.push('/dashboard/comunicados')
   }
 
-  const toggleParent = (parentId: string) => {
+  function toggleParent(id: string) {
     setSelectedParents(prev =>
-      prev.includes(parentId) ? prev.filter(id => id !== parentId) : [...prev, parentId]
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     )
   }
 
-  const selectAllParents = () => {
-    if (selectedParents.length === padres.length) {
-      setSelectedParents([])
-    } else {
-      setSelectedParents(padres.map(p => p.id))
-    }
+  function selectAllParents() {
+    if (selectedParents.length === padres.length) setSelectedParents([])
+    else setSelectedParents(padres.map(p => p.id))
   }
 
-  if (loadingData) {
-    return <p>Cargando información...</p>
-  }
+  if (loadingData) return <p>Cargando...</p>
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-slate-900">Redactar Comunicado</h1>
 
       <form onSubmit={handleSend} className="bg-white p-8 rounded-2rem border border-slate-200 shadow-sm space-y-6">
+
+        {/* Título */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Asunto / Título</label>
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
             className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
-            placeholder="Ej: Reunión de padres"
             required
           />
         </div>
 
+        {/* Contenido */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Contenido del mensaje</label>
           <textarea
@@ -139,14 +136,13 @@ export default function NuevoComunicado() {
             onChange={e => setContent(e.target.value)}
             rows={6}
             className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
-            placeholder="Escribí el comunicado..."
             required
           />
         </div>
 
+        {/* Destino */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-3 block">Enviar a</label>
-
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <button
               type="button"
@@ -177,7 +173,7 @@ export default function NuevoComunicado() {
           </div>
         </div>
 
-        {/* Selectores de curso o padres según targetType */}
+        {/* Selector Curso */}
         {targetType === 'curso' && (
           <div>
             <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-2 block">Seleccionar curso</label>
@@ -188,14 +184,13 @@ export default function NuevoComunicado() {
             >
               <option value="">-- Seleccionar curso --</option>
               {cursos.map(curso => (
-                <option key={curso.id} value={curso.id}>
-                  {curso.name} {curso.section ? `- ${curso.section}` : ''}
-                </option>
+                <option key={curso.id} value={curso.id}>{curso.name} {curso.section}</option>
               ))}
             </select>
           </div>
         )}
 
+        {/* Selector Padres */}
         {targetType === 'alumno-especifico' && (
           <div>
             <div className="flex justify-between items-center mb-2">
@@ -213,20 +208,11 @@ export default function NuevoComunicado() {
                 <p className="text-slate-500 text-sm text-center py-4">No hay padres registrados</p>
               ) : (
                 padres.map(padre => (
-                  <label
-                    key={padre.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedParents.includes(padre.id) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'}`}
-                  >
+                  <label key={padre.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedParents.includes(padre.id) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'}`}>
                     <input
                       type="checkbox"
                       checked={selectedParents.includes(padre.id)}
-                      onChange={() => {
-                        if (selectedParents.includes(padre.id)) {
-                          setSelectedParents(selectedParents.filter(id => id !== padre.id))
-                        } else {
-                          setSelectedParents([...selectedParents, padre.id])
-                        }
-                      }}
+                      onChange={() => toggleParent(padre.id)}
                       className="w-5 h-5 accent-blue-600 rounded"
                     />
                     <div>
