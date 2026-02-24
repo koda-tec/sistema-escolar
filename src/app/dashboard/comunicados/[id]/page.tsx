@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useToast } from '@/app/components/Toast'
 
-export default function DetalleComunicado({ params }: { params: { id: string } }) {
-  const { id } = params
+export default function DetalleComunicado(props: { params: { id: string } }) {
+  const { id } = props.params
+  
   const [comunicado, setComunicado] = useState<any>(null)
   const [readInfo, setReadInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
