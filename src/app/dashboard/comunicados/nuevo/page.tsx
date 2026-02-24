@@ -7,15 +7,13 @@ import { useToast } from '@/app/components/Toast'
 export default function NuevoComunicado() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [targetType, setTargetType] = useState('toda-la-escuela')
+  const [targetType, setTargetType] = useState('toda-la-escuela') // valor por defecto acorde a restricción
   const [targetId, setTargetId] = useState('')
   const [selectedParents, setSelectedParents] = useState<string[]>([])
   const [confirm, setConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   
-  // Datos de apoyo para los selects
   const [cursos, setCursos] = useState<any[]>([])
-  const [materias, setMaterias] = useState<any[]>([])
   const [padres, setPadres] = useState<any[]>([])
   const [loadingData, setLoadingData] = useState(true)
   
@@ -39,12 +37,6 @@ export default function NuevoComunicado() {
         .eq('school_id', profile.school_id)
         .order('name')
 
-      const { data: materiasData } = await supabase
-        .from('materias')
-        .select('id, name')
-        .eq('school_id', profile.school_id)
-        .order('name')
-
       const { data: padresData } = await supabase
         .from('profiles')
         .select('id, full_name, email')
@@ -53,7 +45,6 @@ export default function NuevoComunicado() {
         .order('full_name')
 
       setCursos(cursosData || [])
-      setMaterias(materiasData || [])
       setPadres(padresData || [])
       setLoadingData(false)
     }
@@ -73,20 +64,14 @@ export default function NuevoComunicado() {
       return
     }
 
-    if (targetType === 'un-curso' && !targetId) {
+    if (targetType === 'curso' && !targetId) {
       showToast('Debés seleccionar un curso', 'error')
       setLoading(false)
       return
     }
 
-    if (targetType === 'una-materia' && !targetId) {
-      showToast('Debés seleccionar una materia', 'error')
-      setLoading(false)
-      return
-    }
-
-    if (targetType === 'padres-especificos' && selectedParents.length === 0) {
-      showToast('Debés seleccionar por lo menos un padre', 'error')
+    if (targetType === 'alumno-especifico' && selectedParents.length === 0) {
+      showToast('Debés seleccionar al menos un padre', 'error')
       setLoading(false)
       return
     }
@@ -97,26 +82,26 @@ export default function NuevoComunicado() {
       title,
       content,
       target_type: targetType,
-      target_id: (targetType === 'toda-la-escuela') ? null : targetId,
-      target_parents: targetType === 'padres-especificos' ? selectedParents : null,
+      target_id: targetType === 'toda-la-escuela' ? null : targetId,
+      target_parents: targetType === 'alumno-especifico' ? selectedParents : null,
       require_confirmation: confirm
     })
 
     if (error) {
       showToast("Error: " + error.message, "error")
-    } else {
-      showToast("Comunicado enviado correctamente", "success")
-      router.push('/dashboard/comunicados')
+      setLoading(false)
+      return
     }
+
+    showToast("Comunicado enviado correctamente", "success")
     setLoading(false)
+    router.push('/dashboard/comunicados')
   }
 
   const toggleParent = (parentId: string) => {
-    if (selectedParents.includes(parentId)) {
-      setSelectedParents(selectedParents.filter(id => id !== parentId))
-    } else {
-      setSelectedParents([...selectedParents, parentId])
-    }
+    setSelectedParents(prev =>
+      prev.includes(parentId) ? prev.filter(id => id !== parentId) : [...prev, parentId]
+    )
   }
 
   const selectAllParents = () => {
@@ -128,7 +113,19 @@ export default function NuevoComunicado() {
   }
 
   if (loadingData) {
-    return <p>Cargando información...</p>
+    return (
+      <div className="max-w-3xl mx-auto space-y-8">
+        <h1 className="text-2xl font-bold text-slate-900">Redactar Comunicado</h1>
+        <div className="bg-white p-8 rounded-2rem border border-slate-200 shadow-sm space-y-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+            <div className="h-12 bg-slate-200 rounded"></div>
+            <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+            <div className="h-32 bg-slate-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -136,49 +133,46 @@ export default function NuevoComunicado() {
       <h1 className="text-2xl font-bold text-slate-900">Redactar Comunicado</h1>
 
       <form onSubmit={handleSend} className="bg-white p-8 rounded-2rem border border-slate-200 shadow-sm space-y-6">
-        {/* Título */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Asunto / Título</label>
-          <input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
+          <input 
+            value={title} 
+            onChange={e => setTitle(e.target.value)} 
             className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
             placeholder="Ej: Reunión de padres"
-            required
+            required 
           />
         </div>
 
-        {/* Contenido */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Contenido del mensaje</label>
-          <textarea
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            rows={6}
+          <textarea 
+            value={content} 
+            onChange={e => setContent(e.target.value)} 
+            rows={6} 
             className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
             placeholder="Escribí el comunicado..."
-            required
+            required 
           />
         </div>
 
-        {/* Opciones de destino */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-3 block">Enviar a</label>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <button
               type="button"
-              onClick={() => { setTargetType('toda-la-escuela'); setTargetId(''); setSelectedParents([]) }}
+              onClick={() => { setTargetType('toda-la-escuela'); setTargetId(''); setSelectedParents([]); }}
               className={`p-4 rounded-2xl border-2 text-center ${targetType === 'toda-la-escuela' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
             >
               <span className="text-2xl">🏢</span>
-              <p className="text-xs font-bold mt-1">Toda la Escuela</p>
+              <p className="text-xs font-bold mt-1">Toda la escuela</p>
             </button>
 
             <button
               type="button"
-              onClick={() => { setTargetType('un-curso'); setTargetId(''); setSelectedParents([]) }}
-              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'un-curso' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
+              onClick={() => { setTargetType('curso'); setTargetId(''); setSelectedParents([]); }}
+              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'curso' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
             >
               <span className="text-2xl">🏫</span>
               <p className="text-xs font-bold mt-1">Comunicado sobre un curso</p>
@@ -186,17 +180,8 @@ export default function NuevoComunicado() {
 
             <button
               type="button"
-              onClick={() => { setTargetType('una-materia'); setTargetId(''); setSelectedParents([]) }}
-              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'una-materia' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
-            >
-              <span className="text-2xl">📚</span>
-              <p className="text-xs font-bold mt-1">Comunicado sobre una materia</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setTargetType('padres-especificos'); setTargetId(''); setSelectedParents([]) }}
-              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'padres-especificos' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
+              onClick={() => { setTargetType('alumno-especifico'); setTargetId(''); setSelectedParents([]); }}
+              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'alumno-especifico' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
             >
               <span className="text-2xl">👨‍👩‍👧</span>
               <p className="text-xs font-bold mt-1">Padres específicos</p>
@@ -204,8 +189,8 @@ export default function NuevoComunicado() {
           </div>
         </div>
 
-        {/* Selectores condicionales */}
-        {targetType === 'un-curso' && (
+        {/* Selector para Curso */}
+        {targetType === 'curso' && (
           <div>
             <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-2 block">Seleccionar curso</label>
             <select
@@ -215,29 +200,16 @@ export default function NuevoComunicado() {
             >
               <option value="">-- Seleccionar curso --</option>
               {cursos.map(curso => (
-                <option key={curso.id} value={curso.id}>{curso.name} {curso.section}</option>
+                <option key={curso.id} value={curso.id}>
+                  {curso.name} {curso.section ? `- ${curso.section}` : ''}
+                </option>
               ))}
             </select>
           </div>
         )}
 
-        {targetType === 'una-materia' && (
-          <div>
-            <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-2 block">Seleccionar materia</label>
-            <select
-              value={targetId}
-              onChange={e => setTargetId(e.target.value)}
-              className="w-full p-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
-            >
-              <option value="">-- Seleccionar materia --</option>
-              {materias.map(materia => (
-                <option key={materia.id} value={materia.id}>{materia.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {targetType === 'padres-especificos' && (
+        {/* Selector para Padres */}
+        {targetType === 'alumno-especifico' && (
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Seleccionar padres</label>
@@ -282,7 +254,7 @@ export default function NuevoComunicado() {
           </div>
         )}
 
-        {/* Confirmar lectura */}
+        {/* Solicitar confirmación de lectura */}
         <div className="flex items-center gap-3 pt-2">
           <input 
             type="checkbox" 
