@@ -1,21 +1,33 @@
+
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useToast } from '@/app/components/Toast'
 
 interface DetalleComunicadoProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default function DetalleComunicado({ params }: DetalleComunicadoProps) {
-  const { id } = params
+  const [id, setId] = useState<string | null>(null)
   const [comunicado, setComunicado] = useState<any>(null)
   const [readInfo, setReadInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
   const { showToast } = useToast()
 
+  // 👇 resolver params async
   useEffect(() => {
+    const resolveParams = async () => {
+      const resolved = await params
+      setId(resolved.id)
+    }
+    resolveParams()
+  }, [params])
+
+  useEffect(() => {
+    if (!id) return
+
     const fetchAndMarkRead = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -64,6 +76,7 @@ export default function DetalleComunicado({ params }: DetalleComunicadoProps) {
       }
       setLoading(false)
     }
+
     fetchAndMarkRead()
   }, [id, supabase, showToast])
 
@@ -108,22 +121,27 @@ export default function DetalleComunicado({ params }: DetalleComunicadoProps) {
           {comunicado.content}
         </div>
 
-        {comunicado.require_confirmation && (
-          <div className="mt-12 p-8 bg-blue-50 rounded-3xl border border-blue-100 flex flex-col items-center text-center">
-            <h4 className="font-bold text-blue-900 mb-2">Confirmación de Notificación</h4>
-            <p className="text-sm text-blue-700 mb-6">Este comunicado requiere que confirmes que has recibido y entendido la información.</p>
-            
-            {readInfo?.confirmed_at ? (
-              <div className="bg-green-100 text-green-700 px-6 py-2 rounded-full font-bold text-sm">
-                ✅ Confirmado el {new Date(readInfo.confirmed_at).toLocaleString()}
-              </div>
-            ) : (
-              <button onClick={handleConfirm} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
-                Confirmar Lectura
-              </button>
-            )}
-          </div>
-        )}
+       {comunicado.require_confirmation && (
+  <div className="mt-12 p-8 bg-blue-50 rounded-3xl border border-blue-100 flex flex-col items-center text-center">
+    <h4 className="font-bold text-blue-900 mb-2">Confirmación de Notificación</h4>
+    <p className="text-sm text-blue-700 mb-6">
+      Este comunicado requiere que confirmes que has recibido y entendido la información.
+    </p>
+
+    {readInfo?.confirmed_at ? (
+      <div className="bg-green-100 text-green-700 px-6 py-2 rounded-full font-bold text-sm">
+        ✅ Confirmado el {new Date(readInfo.confirmed_at).toLocaleString()}
+      </div>
+    ) : (
+      <button
+        onClick={handleConfirm}
+        className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+      >
+        Confirmar Lectura
+      </button>
+    )}
+  </div>
+)}
       </article>
     </div>
   )
