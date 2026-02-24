@@ -28,7 +28,7 @@ export async function POST(request: Request) {
           }
         ],
         payer: {
-          email: 'test_user_123@testuser.com',
+          email: user.email,
         },
         back_urls: {
           success: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?status=success`,
