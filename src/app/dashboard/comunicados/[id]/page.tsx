@@ -3,9 +3,12 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useToast } from '@/app/components/Toast'
 
-export default function DetalleComunicado(props: { params: { id: string } }) {
-  const { id } = props.params
-  
+interface DetalleComunicadoProps {
+  params: { id: string }
+}
+
+export default function DetalleComunicado({ params }: DetalleComunicadoProps) {
+  const { id } = params
   const [comunicado, setComunicado] = useState<any>(null)
   const [readInfo, setReadInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -15,7 +18,6 @@ export default function DetalleComunicado(props: { params: { id: string } }) {
   useEffect(() => {
     const fetchAndMarkRead = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-
       if (!user) {
         showToast('No se encontró el usuario', 'error')
         setLoading(false)
