@@ -2,44 +2,27 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
-
-interface Curso {
-  id: string
-  name: string
-  section: string
-}
-
-interface Materia {
-  id: string
-  name: string
-}
-
-interface Padre {
-  id: string
-  full_name: string
-  email: string
-}
+import { useToast } from '@/app/components/Toast'
 
 export default function NuevoComunicado() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [targetType, setTargetType] = useState('institution')
+  const [targetType, setTargetType] = useState('toda-la-escuela')
   const [targetId, setTargetId] = useState('')
   const [selectedParents, setSelectedParents] = useState<string[]>([])
   const [confirm, setConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   
-  // Datos para los selectores
-  const [cursos, setCursos] = useState<Curso[]>([])
-  const [materias, setMaterias] = useState<Materia[]>([])
-  const [padres, setPadres] = useState<Padre[]>([])
+  // Datos de apoyo para los selects
+  const [cursos, setCursos] = useState<any[]>([])
+  const [materias, setMaterias] = useState<any[]>([])
+  const [padres, setPadres] = useState<any[]>([])
   const [loadingData, setLoadingData] = useState(true)
   
   const supabase = createClient()
   const router = useRouter()
+  const { showToast } = useToast()
 
-  // Cargar cursos, materias y padres
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -50,31 +33,28 @@ export default function NuevoComunicado() {
         return
       }
 
-      // Cargar cursos
       const { data: cursosData } = await supabase
         .from('courses')
         .select('id, name, section')
         .eq('school_id', profile.school_id)
         .order('name')
-      setCursos(cursosData || [])
 
-      // Cargar materias
       const { data: materiasData } = await supabase
         .from('materias')
         .select('id, name')
         .eq('school_id', profile.school_id)
         .order('name')
-      setMaterias(materiasData || [])
 
-      // Cargar padres (de la tabla profiles con role 'padre')
       const { data: padresData } = await supabase
         .from('profiles')
         .select('id, full_name, email')
         .eq('school_id', profile.school_id)
         .eq('role', 'padre')
         .order('full_name')
-      setPadres(padresData || [])
 
+      setCursos(cursosData || [])
+      setMaterias(materiasData || [])
+      setPadres(padresData || [])
       setLoadingData(false)
     }
     fetchData()
@@ -84,83 +64,59 @@ export default function NuevoComunicado() {
     e.preventDefault()
     setLoading(true)
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).single()
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).single()
 
-      // Validar que se haya seleccionado un destino
-      if (targetType === 'course' && !targetId) {
-        toast.error('Debes seleccionar un curso')
-        setLoading(false)
-        return
-      }
-      if (targetType === 'materia' && !targetId) {
-        toast.error('Debes seleccionar una materia')
-        setLoading(false)
-        return
-      }
-      if (targetType === 'parents' && selectedParents.length === 0) {
-        toast.error('Debes seleccionar al menos un padre')
-        setLoading(false)
-        return
-      }
-
-      // Crear el comunicado
-      const { data: comunicado, error } = await supabase
-        .from('communications')
-        .insert({
-          school_id: profile?.school_id,
-          sender_id: user?.id,
-          title,
-          content,
-          target_type: targetType,
-          target_id: targetType === 'parents' ? null : targetId,
-          target_parents: targetType === 'parents' ? selectedParents : null,
-          require_confirmation: confirm
-        })
-        .select()
-        .single()
-
-      if (error) {
-        toast.error('Error: ' + error.message)
-        setLoading(false)
-        return
-      }
-
-      // Si el target es 'parents', crear registros en communication_reads para cada padre seleccionado
-      if (targetType === 'parents' && comunicado) {
-        const readsData = selectedParents.map(parentId => ({
-          communication_id: comunicado.id,
-          parent_id: parentId,
-          read_at: null,
-          confirmed_at: null
-        }))
-
-        const { error: readsError } = await supabase
-          .from('communication_reads')
-          .insert(readsData)
-
-        if (readsError) {
-          console.error('Error creando registros de lectura:', readsError)
-        }
-      }
-
-      toast.success('Comunicado enviado correctamente')
-      router.push('/dashboard/comunicados')
-
-    } catch (error: any) {
-      toast.error('Error: ' + error.message)
+    if (!profile?.school_id) {
+      showToast('No se pudo identificar la escuela', 'error')
+      setLoading(false)
+      return
     }
 
+    if (targetType === 'un-curso' && !targetId) {
+      showToast('Debés seleccionar un curso', 'error')
+      setLoading(false)
+      return
+    }
+
+    if (targetType === 'una-materia' && !targetId) {
+      showToast('Debés seleccionar una materia', 'error')
+      setLoading(false)
+      return
+    }
+
+    if (targetType === 'padres-especificos' && selectedParents.length === 0) {
+      showToast('Debés seleccionar por lo menos un padre', 'error')
+      setLoading(false)
+      return
+    }
+
+    const { error } = await supabase.from('communications').insert({
+      school_id: profile.school_id,
+      sender_id: user?.id,
+      title,
+      content,
+      target_type: targetType,
+      target_id: (targetType === 'toda-la-escuela') ? null : targetId,
+      target_parents: targetType === 'padres-especificos' ? selectedParents : null,
+      require_confirmation: confirm
+    })
+
+    if (error) {
+      showToast("Error: " + error.message, "error")
+    } else {
+      showToast("Comunicado enviado correctamente", "success")
+      router.push('/dashboard/comunicados')
+    }
     setLoading(false)
   }
 
   const toggleParent = (parentId: string) => {
-    setSelectedParents(prev => 
-      prev.includes(parentId)
-        ? prev.filter(id => id !== parentId)
-        : [...prev, parentId]
-    )
+    if (selectedParents.includes(parentId)) {
+      setSelectedParents(selectedParents.filter(id => id !== parentId))
+    } else {
+      setSelectedParents([...selectedParents, parentId])
+    }
   }
 
   const selectAllParents = () => {
@@ -172,19 +128,7 @@ export default function NuevoComunicado() {
   }
 
   if (loadingData) {
-    return (
-      <div className="max-w-3xl mx-auto space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900">Redactar Comunicado</h1>
-        <div className="bg-white p-8 rounded-2rem border border-slate-200 shadow-sm space-y-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-            <div className="h-12 bg-slate-200 rounded"></div>
-            <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-            <div className="h-32 bg-slate-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    )
+    return <p>Cargando información...</p>
   }
 
   return (
@@ -195,41 +139,37 @@ export default function NuevoComunicado() {
         {/* Título */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Asunto / Título</label>
-          <input 
-            value={title} 
-            onChange={e => setTitle(e.target.value)} 
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
             className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
             placeholder="Ej: Reunión de padres"
-            required 
+            required
           />
         </div>
 
         {/* Contenido */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Contenido del mensaje</label>
-          <textarea 
-            value={content} 
-            onChange={e => setContent(e.target.value)} 
-            rows={6} 
+          <textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            rows={6}
             className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
-            placeholder="Escribí tu comunicado aquí..."
-            required 
+            placeholder="Escribí el comunicado..."
+            required
           />
         </div>
 
-        {/* Destinatarios */}
+        {/* Opciones de destino */}
         <div>
           <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-3 block">Enviar a</label>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <button
               type="button"
-              onClick={() => { setTargetType('institution'); setTargetId(''); setSelectedParents([]); }}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                targetType === 'institution' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-slate-200 hover:border-slate-300'
-              }`}
+              onClick={() => { setTargetType('toda-la-escuela'); setTargetId(''); setSelectedParents([]) }}
+              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'toda-la-escuela' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
             >
               <span className="text-2xl">🏢</span>
               <p className="text-xs font-bold mt-1">Toda la Escuela</p>
@@ -237,132 +177,112 @@ export default function NuevoComunicado() {
 
             <button
               type="button"
-              onClick={() => { setTargetType('course'); setTargetId(''); setSelectedParents([]); }}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                targetType === 'course' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-slate-200 hover:border-slate-300'
-              }`}
+              onClick={() => { setTargetType('un-curso'); setTargetId(''); setSelectedParents([]) }}
+              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'un-curso' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
             >
               <span className="text-2xl">🏫</span>
-              <p className="text-xs font-bold mt-1">Un Curso</p>
+              <p className="text-xs font-bold mt-1">Comunicado sobre un curso</p>
             </button>
 
             <button
               type="button"
-              onClick={() => { setTargetType('materia'); setTargetId(''); setSelectedParents([]); }}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                targetType === 'materia' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-slate-200 hover:border-slate-300'
-              }`}
+              onClick={() => { setTargetType('una-materia'); setTargetId(''); setSelectedParents([]) }}
+              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'una-materia' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
             >
               <span className="text-2xl">📚</span>
-              <p className="text-xs font-bold mt-1">Una Materia</p>
+              <p className="text-xs font-bold mt-1">Comunicado sobre una materia</p>
             </button>
 
             <button
               type="button"
-              onClick={() => { setTargetType('parents'); setTargetId(''); setSelectedParents([]); }}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                targetType === 'parents' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-slate-200 hover:border-slate-300'
-              }`}
+              onClick={() => { setTargetType('padres-especificos'); setTargetId(''); setSelectedParents([]) }}
+              className={`p-4 rounded-2xl border-2 text-center ${targetType === 'padres-especificos' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
             >
               <span className="text-2xl">👨‍👩‍👧</span>
-              <p className="text-xs font-bold mt-1">Padres Específicos</p>
+              <p className="text-xs font-bold mt-1">Padres específicos</p>
             </button>
           </div>
-
-          {/* Selector de Curso */}
-          {targetType === 'course' && (
-            <div className="animate-in fade-in slide-in-from-top-2">
-              <label className="text-[11px] font-bold text-slate-700 uppercase ml-1 mb-2 block">Seleccionar Curso</label>
-              <select 
-                value={targetId} 
-                onChange={e => setTargetId(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
-              >
-                <option value="">-- Seleccionar curso --</option>
-                {cursos.map(curso => (
-                  <option key={curso.id} value={curso.id}>
-                    {curso.name} {curso.section ? `- ${curso.section}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Selector de Materia */}
-          {targetType === 'materia' && (
-            <div className="animate-in fade-in slide-in-from-top-2">
-              <label className="text-[11px] font-bold text-slate-700 uppercase ml-1 mb-2 block">Seleccionar Materia</label>
-              <select 
-                value={targetId} 
-                onChange={e => setTargetId(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl outline-none text-slate-900"
-              >
-                <option value="">-- Seleccionar materia --</option>
-                {materias.map(materia => (
-                  <option key={materia.id} value={materia.id}>{materia.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Selector de Padres */}
-          {targetType === 'parents' && (
-            <div className="animate-in fade-in slide-in-from-top-2">
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-[11px] font-bold text-slate-700 uppercase ml-1">Seleccionar Padres</label>
-                <button
-                  type="button"
-                  onClick={selectAllParents}
-                  className="text-xs text-blue-600 font-bold hover:underline"
-                >
-                  {selectedParents.length === padres.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                </button>
-              </div>
-              
-              <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-2xl p-4 space-y-2">
-                {padres.length === 0 ? (
-                  <p className="text-slate-500 text-sm text-center py-4">
-                    No hay padres registrados en la institución
-                  </p>
-                ) : (
-                  padres.map(padre => (
-                    <label 
-                      key={padre.id} 
-                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
-                        selectedParents.includes(padre.id) 
-                          ? 'bg-blue-50 border border-blue-200' 
-                          : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedParents.includes(padre.id)}
-                        onChange={() => toggleParent(padre.id)}
-                        className="w-5 h-5 accent-blue-600 rounded"
-                      />
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{padre.full_name}</p>
-                        <p className="text-xs text-slate-500">{padre.email}</p>
-                      </div>
-                    </label>
-                  ))
-                )}
-              </div>
-              
-              <p className="text-xs text-slate-500 mt-2 ml-1">
-                {selectedParents.length} padre(s) seleccionado(s)
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Confirmación */}
+        {/* Selectores condicionales */}
+        {targetType === 'un-curso' && (
+          <div>
+            <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-2 block">Seleccionar curso</label>
+            <select
+              value={targetId}
+              onChange={e => setTargetId(e.target.value)}
+              className="w-full p-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
+            >
+              <option value="">-- Seleccionar curso --</option>
+              {cursos.map(curso => (
+                <option key={curso.id} value={curso.id}>{curso.name} {curso.section}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {targetType === 'una-materia' && (
+          <div>
+            <label className="text-[11px] font-bold text-slate-900 uppercase ml-1 mb-2 block">Seleccionar materia</label>
+            <select
+              value={targetId}
+              onChange={e => setTargetId(e.target.value)}
+              className="w-full p-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
+            >
+              <option value="">-- Seleccionar materia --</option>
+              {materias.map(materia => (
+                <option key={materia.id} value={materia.id}>{materia.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {targetType === 'padres-especificos' && (
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Seleccionar padres</label>
+              <button
+                type="button"
+                onClick={() => selectedParents.length === padres.length ? setSelectedParents([]) : setSelectedParents(padres.map(p => p.id))}
+                className="text-xs text-blue-600 font-bold hover:underline"
+              >
+                {selectedParents.length === padres.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+              </button>
+            </div>
+            <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-2xl p-4 space-y-2">
+              {padres.length === 0 ? (
+                <p className="text-slate-500 text-sm text-center py-4">No hay padres registrados</p>
+              ) : (
+                padres.map(padre => (
+                  <label 
+                    key={padre.id} 
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedParents.includes(padre.id) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'}`}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={selectedParents.includes(padre.id)} 
+                      onChange={() => {
+                        if(selectedParents.includes(padre.id)) {
+                          setSelectedParents(selectedParents.filter(id => id !== padre.id))
+                        } else {
+                          setSelectedParents([...selectedParents, padre.id])
+                        }
+                      }} 
+                      className="w-5 h-5 accent-blue-600 rounded" 
+                    />
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{padre.full_name}</p>
+                      <p className="text-xs text-slate-500">{padre.email}</p>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-2 ml-1">{selectedParents.length} padre(s) seleccionado(s)</p>
+          </div>
+        )}
+
+        {/* Confirmar lectura */}
         <div className="flex items-center gap-3 pt-2">
           <input 
             type="checkbox" 
@@ -376,7 +296,7 @@ export default function NuevoComunicado() {
           </label>
         </div>
 
-        {/* Botón */}
+        {/* Botón publicar */}
         <button 
           type="submit"
           disabled={loading}
