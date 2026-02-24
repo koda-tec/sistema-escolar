@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin()
     const hoy = new Date().toISOString().split('T')[0]
 
-    // Consulta corregida: ahora 'email' existe en profiles
+    // 1. Buscamos las inasistencias de hoy
     const { data: inasistencias, error: queryError } = await supabaseAdmin
       .from('attendance')
       .select(`
@@ -30,10 +30,15 @@ export async function POST(request: Request) {
 
     if (queryError) throw queryError
 
+    // Si no hay ausentes, avisamos al frontend
     if (!inasistencias || inasistencias.length === 0) {
-      return NextResponse.json({ message: 'No hay ausentes para notificar.' })
+      return NextResponse.json({ 
+        success: true, 
+        message: 'No hubo ausencias para notificar en este curso.' 
+      })
     }
 
+    // 2. Preparamos el envío masivo de emails
     const emailPromises = inasistencias.map(async (reg: any) => {
       const emailPadre = reg.students.profiles?.email
       const nombreAlumno = reg.students.full_name
@@ -64,9 +69,14 @@ export async function POST(request: Request) {
       })
     })
 
+    // 3. Ejecutamos todos los envíos
     await Promise.all(emailPromises)
 
-    return NextResponse.json({ success: true, count: inasistencias.length })
+    // 4. RESPUESTA CORREGIDA: Ahora incluye la propiedad 'message'
+    return NextResponse.json({ 
+      success: true, 
+      message: `Se enviaron ${inasistencias.length} avisos por email correctamente.` 
+    })
 
   } catch (error: any) {
     console.error('Crash Notificador:', error.message)

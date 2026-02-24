@@ -26,45 +26,36 @@ export default function AttendanceForm({ students, courseId }: { students: any[]
       date: new Date().toISOString().split('T')[0]
     }));
 
-    try {
-      // 2. Insertamos la asistencia en Supabase
-      const { error: dbError } = await supabase
-        .from('attendance')
-        .insert(records);
+try {
+    const { error: dbError } = await supabase.from('attendance').insert(records);
+    if (dbError) throw new Error("Error al guardar en la base de datos");
 
-      if (dbError) {
-        console.error("Error Supabase:", dbError);
-        throw new Error("No tienes permisos o hubo un error de base de datos.");
-      }
+    // Llamada al notificador
+    const notifyRes = await fetch('/api/asistencia/notificar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId })
+    });
 
-      // 3. Disparamos las notificaciones por Email (Solo a los ausentes)
-      // Llamamos a la API que creamos en /api/asistencia/notificar
-      const notifyRes = await fetch('/api/asistencia/notificar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseId })
-      });
+    const notifyData = await notifyRes.json();
 
-      const notifyData = await notifyRes.json();
-
-      if (notifyData.success) {
-        toast.success(`Asistencia guardada. ${notifyData.message}`);
-      } else {
-        // Si la asistencia se guardó pero el mail falló (ej: dominio no verificado)
-        toast.success("Asistencia guardada (Las notificaciones por email requieren dominio verificado)");
-      }
-
-      // 4. Redirigimos al panel principal
-      router.push('/dashboard/asistencia');
-      router.refresh();
-
-    } catch (error: any) {
-      console.error("Detalle del error:", error);
-      toast.error(error.message || "Error al procesar la asistencia");
-    } finally {
-      setLoading(false);
+    if (notifyData.success) {
+      // USAMOS EL MENSAJE QUE VIENE DEL BACKEND
+      toast.success(`Asistencia guardada. ${notifyData.message || ''}`);
+    } else {
+      toast.success("Asistencia guardada (Sin avisos enviados)");
     }
-  };
+
+    router.push('/dashboard/asistencia');
+    router.refresh();
+
+  } catch (error: any) {
+    toast.error(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
