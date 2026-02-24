@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useToast } from '@/app/components/Toast' // Importamos tu Toast
+import Link from 'next/link'
 
 export default function MisMaterias() {
   const [materias, setMaterias] = useState<any[]>([])
@@ -223,9 +224,12 @@ export default function MisMaterias() {
                 <button className="w-full bg-slate-900 text-white py-3 rounded-xl text-xs font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
                   👥 Ver Alumnos
                 </button>
-                <button className="w-full bg-blue-50 text-blue-600 py-3 rounded-xl text-xs font-bold hover:bg-blue-100 transition-all flex items-center justify-center gap-2">
-                  📣 Enviar Aviso
-                </button>
+                <Link 
+                  href={`/dashboard/docente/materias/${item.courses.id}`} 
+                  className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-sm font-bold hover:bg-black text-center"
+                  >
+                  Ver Alumnos
+                </Link>
               </div>
             </div>
           ))}
