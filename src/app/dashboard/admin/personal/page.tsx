@@ -160,29 +160,39 @@ export default function GestionPersonal() {
         </div>
 
         {/* ASIGNACIÓN DE CURSOS (Solo para Preceptores) */}
-        {role === 'preceptor' && (
-          <div className="space-y-4 pt-4 border-t border-slate-100 animate-in slide-in-from-top-2 duration-300">
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Asignar Cursos a cargo:</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {cursosDisponibles.map(curso => (
-                <button
-                  key={curso.id}
-                  type="button"
-                  onClick={() => toggleCurso(curso.id)}
-                  className={`p-3 rounded-xl text-[10px] font-black transition-all border ${
-                    cursosSeleccionados.includes(curso.id)
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
-                      : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100'
-                  }`}
-                >
-                  {curso.name} "{curso.section}"
-                  <span className="block opacity-60 font-medium lowercase italic">{curso.shift || 'mañana'}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Reemplaza la sección de ASIGNACIÓN DE CURSOS por esta: */}
+{role === 'preceptor' && (
+  <div className="space-y-6 pt-6 border-t border-slate-100">
+    <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Asignar Cursos por Turno:</h3>
+    
+    {['Mañana', 'Tarde', 'Noche'].map(turno => {
+      const cursosDelTurno = cursosDisponibles.filter(c => c.shift === turno);
+      if (cursosDelTurno.length === 0) return null;
 
+      return (
+        <div key={turno} className="space-y-3 bg-slate-50/50 p-4 rounded-2rem border border-slate-100">
+          <p className="text-[10px] font-black uppercase text-blue-600 ml-2 tracking-widest">{turno}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            {cursosDelTurno.map(curso => (
+              <button
+                key={curso.id}
+                type="button"
+                onClick={() => toggleCurso(curso.id)}
+                className={`p-3 rounded-2xl text-[10px] font-black transition-all border ${
+                  cursosSeleccionados.includes(curso.id)
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200 scale-105'
+                    : 'bg-white text-slate-400 border-slate-200 hover:border-blue-300'
+                }`}
+              >
+                {curso.name} "{curso.section}"
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
         <div className="pt-2">
           <button 
             disabled={loading}

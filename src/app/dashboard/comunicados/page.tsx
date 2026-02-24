@@ -25,11 +25,11 @@ export default function ComunicadosPage() {
       setProfile(profData)
 
       // 2. Solo cargar comunicados si pagó o si es personal de la escuela
-      if (profData?.role !== 'padre' || profData?.subscription_active) {
+      if (profData && (profData.role !== 'padre' || profData.subscription_active)) {
           const { data } = await supabase
             .from('communications')
             .select(`*, profiles(full_name)`)
-            .eq('school_id', profData?.school_id)
+            .eq('school_id', profData.school_id)
             .order('created_at', { ascending: false })
           
           setComunicados(data || [])
@@ -39,7 +39,11 @@ export default function ComunicadosPage() {
     fetchData()
   }, [])
 
-  if (loading) return <div className="p-20 text-center animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">Cargando avisos...</div>
+  if (loading) return (
+    <div className="p-20 text-center animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
+      Cargando avisos...
+    </div>
+  )
 
   // --- MURO DE PAGO (PAYWALL) ---
   if (profile?.role === 'padre' && !profile?.subscription_active) {
@@ -51,13 +55,36 @@ export default function ComunicadosPage() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Comunicados</h1>
-          <p className="text-slate-600 font-medium">Mensajes oficiales de la institución.</p>
+          <p className="text-slate-500 font-medium">Canal oficial de la institución.</p>
         </div>
         
-        {/* Solo el personal puede ver el botón de nuevo comunicado */}
-        {['directivo', 'docente', 'preceptor', 'admin_koda'].includes(profile?.role) && (
-          <Link href="/dashboard/comunicados/nuevo" className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
-            + Nuevo Comunicado
+        {/* CORRECCIÓN: Usamos profile.role en lugar de role directamente */}
+        
+        {/* Botón para STAFF (Directivos, Docentes, Preceptores) */}
+        {profile?.role && ['directivo', 'docente', 'preceptor', 'admin_koda'].includes(profile.role) && (
+          <Link 
+            href="/dashboard/comunicados/nuevo" 
+            className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95"
+          >
+            + Emitir Comunicado
+          </Link>
+        )}
+        {profile?.role === 'preceptor' && (
+          <div className="mt-12 space-y-6">
+            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">🔔 Notas recibidas de padres</h2>
+            {/* Aquí harías un fetch a la tabla 'parent_requests' filtrando por los alumnos de los cursos del preceptor */}
+            <div className="bg-amber-50 p-6 rounded-2rem border border-amber-100 text-sm text-amber-800 font-medium italic">
+              Sección de mensajes entrantes en desarrollo...
+            </div>
+          </div>
+        )}
+        {/* Botón para PADRES */}
+        {profile?.role === 'padre' && (
+          <Link 
+            href="/dashboard/comunicados/solicitud" 
+            className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:bg-black transition-all active:scale-95"
+          >
+            ✉️ Enviar Nota a Preceptoría
           </Link>
         )}
       </header>
@@ -70,12 +97,17 @@ export default function ComunicadosPage() {
             className="bg-white p-6 rounded-3xl border border-slate-200 hover:border-blue-500 hover:shadow-xl transition-all group flex justify-between items-center"
           >
             <div className="space-y-1 text-left">
-              <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{c.title}</h3>
+              <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                {c.title}
+              </h3>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                {new Date(c.created_at).toLocaleDateString()} • {c.profiles?.full_name}
+                {new Date(c.created_at).toLocaleDateString()} • {c.profiles?.full_name || 'Institucional'}
               </p>
             </div>
-            <span className="text-slate-300 group-hover:text-blue-600 transition-all">➜</span>
+            <div className="flex items-center gap-2">
+               <span className="text-[10px] font-black text-blue-500 opacity-0 group-hover:opacity-100 transition-all uppercase">Leer más</span>
+               <span className="text-slate-300 group-hover:text-blue-600 transition-all transform group-hover:translate-x-1">➜</span>
+            </div>
           </Link>
         ))}
 
