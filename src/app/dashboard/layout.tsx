@@ -32,10 +32,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setProfile(profileData)
       setLoading(false)
 
-      // CONTROL: Si debe cambiar contraseña, redirigir automáticamente
+      // CONTROL: Solo preceptores y docentes deben cambiar contraseña
+      const rol = profileData?.role?.toLowerCase().trim()
+      const debeCambiarPassword = rol === 'preceptor' || rol === 'docente'
       const isChangingPassPage = pathname.startsWith('/dashboard/perfil/cambiar-password')
       
-      if (profileData?.must_change_password && !isChangingPassPage) {
+      if (profileData?.must_change_password && debeCambiarPassword && !isChangingPassPage) {
         router.push('/dashboard/perfil/cambiar-password')
       }
     }
@@ -51,7 +53,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userRole = profile?.role?.toLowerCase().trim() || ''
   const hasSchool = !!profile?.school_id
   const brandName = profile?.schools?.name || "KodaEd"
-  const mustChangePassword = profile?.must_change_password || false
+  
+  // Solo preceptores y docentes deben cambiar contraseña
+  const rolDebeCambiarPassword = userRole === 'preceptor' || userRole === 'docente'
+  const mustChangePassword = profile?.must_change_password && rolDebeCambiarPassword
 
   const getLinkStyle = (path: string) => {
     const isActive = pathname === path
@@ -68,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   )
 
-  // SI DEBE CAMBIAR CONTRASEÑA: Mostrar solo el contenido sin menú
+  // SI DEBE CAMBIAR CONTRASEÑA: Mostrar solo el contenido sin menú (solo preceptor/docente)
   if (mustChangePassword) {
     return (
       <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-4">
