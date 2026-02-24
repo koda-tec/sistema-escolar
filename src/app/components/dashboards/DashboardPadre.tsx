@@ -50,7 +50,7 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-[100px] rounded-full -mr-20 -mt-20"></div>
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="text-center md:text-left space-y-4">
-              <span className="bg-blue-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] pb-1.5">
+              <span className="bg-blue-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em]">
                 Acceso Limitado
               </span>
               <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-none">
