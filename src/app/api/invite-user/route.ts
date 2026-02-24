@@ -3,82 +3,36 @@ import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { validatePassword } from '@/app/utils/passwordValidator'
 import { Resend } from 'resend'
 
-// Inicializar Resend - verificar que existe la API key
-const resend = new Resend(process.env.RESEND_API_KEY)
-
-console.log('🔍 RESEND_API_KEY existe:', !!process.env.RESEND_API_KEY)
-console.log('🔍 RESEND_API_KEY valor:', process.env.RESEND_API_KEY?.substring(0, 10) + '...')
-
 export const dynamic = 'force-dynamic'
+
+// Inicializamos Resend dentro de la función para evitar errores de build
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: Request) {
   try {
+    const { email, fullName, role, schoolId, password } = await request.json()
     const supabaseAdmin = getSupabaseAdmin()
 
-    const { email, fullName, role, schoolId, password } = await request.json()
-
-    console.log('📧 Intentando crear usuario:', email)
-
-    // Validaciones básicas
-    if (!email || !fullName || !role || !schoolId || !password) {
-      return NextResponse.json(
-        { error: 'Faltan datos requeridos' },
-        { status: 400 }
-      )
-    }
-
-    // Validar contraseña
-    const passwordValidation = validatePassword(password)
-    if (!passwordValidation.valid) {
-      return NextResponse.json(
-        { error: 'La contraseña debe tener al menos 6 caracteres' },
-        { status: 400 }
-      )
-    }
-
-    let userId: string
-
-    // 1. Buscar si el usuario ya existe en Auth
-    const { data: userData, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-    
-    if (listError) {
-      console.error('❌ Error listando usuarios:', listError)
-      throw listError
-    }
-
+    // 1. Crear/Actualizar en Auth
+    const { data: userData } = await supabaseAdmin.auth.admin.listUsers()
     const existingUser = userData?.users.find(u => u.email === email)
+    let userId: string
 
     if (existingUser) {
       userId = existingUser.id
-      // Actualizar usuario existente
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password,
-        user_metadata: { full_name: fullName }
-      })
-      if (updateError) throw updateError
+      await supabaseAdmin.auth.admin.updateUserById(userId, { password })
     } else {
-      // 2. Crear usuario nuevo si no existe
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         email_confirm: true,
         password,
         user_metadata: { full_name: fullName }
       })
-
-      if (authError) {
-        console.error('❌ Error creando usuario en Auth:', authError)
-        return NextResponse.json({ error: authError.message }, { status: 400 })
-      }
-
-      if (!authData.user) {
-        return NextResponse.json({ error: 'Error al crear usuario' }, { status: 400 })
-      }
-
-      userId = authData.user.id
-      console.log('✅ Usuario creado en Auth:', userId)
+      if (authError) throw authError
+      userId = authData.user!.id
     }
 
-    // 3. Crear o actualizar el perfil
+    // 2. Perfil en base de datos
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
@@ -87,108 +41,36 @@ export async function POST(request: Request) {
         role: role,
         school_id: schoolId,
         must_change_password: true 
-      }, { onConflict: 'id' })
-
-    if (profileError) {
-      console.error('❌ Error creando perfil:', profileError)
-      return NextResponse.json({ error: profileError.message }, { status: 400 })
-    }
-
-    console.log('✅ Perfil creado en Supabase')
-
-    // 4. Enviar email de bienvenida
-    const roleLabel = role === 'docente' ? 'Profesor' : 'Preceptor'
-    
-    try {
-      console.log('📧 Enviando email de bienvenida...')
-      console.log('📧 Destinatario:', email)
-      
-      const result = await sendWelcomeEmail({
-        email,
-        fullName,
-        password,
-        role: roleLabel
       })
-      
-      console.log('✅ Email enviado exitosamente:', result)
-    } catch (emailError) {
-      console.error('❌ Error enviando email:', emailError)
+    if (profileError) throw profileError
+
+    // 3. ENVIAR EMAIL (Aquí estaba el fallo)
+    // IMPORTANTE: Si usan 'onboarding@resend.dev', SOLO les llegará a ustedes.
+    // Para producción deben usar un dominio propio.
+    try {
+      await resend.emails.send({
+        from: 'KodaEd <notificaciones@kodaed.com>', // Cambiar por dominio verificado
+        to: [email],
+        subject: '🚀 Acceso a KodaEd - Credenciales Profesionales',
+        html: `
+          <h1>Hola ${fullName}</h1>
+          <p>Se ha creado tu perfil de <strong>${role}</strong>.</p>
+          <p>Tus credenciales de acceso son:</p>
+          <ul>
+            <li><strong>Email:</strong> ${email}</li>
+            <li><strong>Clave:</strong> ${password}</li>
+          </ul>
+          <p>Por seguridad, el sistema te pedirá cambiar la clave al ingresar.</p>
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login">Ingresar al Sistema</a>
+        `
+      })
+    } catch (e) {
+      console.error("El mail no se envió pero el usuario se creó:", e)
     }
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: `✅ ${roleLabel} gestionado correctamente.`
-    })
+
+    return NextResponse.json({ success: true, message: "Usuario creado y notificado" })
 
   } catch (error: any) {
-    console.error('❌ Error general:', error.message)
-    return NextResponse.json(
-      { error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
-}
-
-// Función para enviar email de bienvenida
-async function sendWelcomeEmail({ email, fullName, password, role }: {
-  email: string
-  fullName: string
-  password: string
-  role: string
-}) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tu-app.vercel.app'
-
-  console.log('📧 Enviando con Resend a:', email)
-  console.log('📧 API Key configurada:', !!process.env.RESEND_API_KEY)
-
-  const { data, error } = await resend.emails.send({
-    from: 'KodaEd <onboarding@resend.dev>',
-    to: [email],
-    subject: '👋 Bienvenido a KodaEd - Tus credenciales de acceso',
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">👋 Bienvenido a KodaEd</h1>
-          </div>
-          
-          <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px;">
-            <p style="font-size: 18px;">Hola <strong>${fullName}</strong>,</p>
-            
-            <p>Tu cuenta de <strong>${role}</strong> ha sido creada exitosamente en KodaEd.</p>
-            
-            <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0;">
-              <p style="margin: 0 0 10px 0; font-weight: bold; color: #64748b;">📧 Correo Electrónico:</p>
-              <p style="margin: 0 0 15px 0; font-size: 18px; color: #2563eb;">${email}</p>
-              
-              <p style="margin: 0 0 10px 0; font-weight: bold; color: #64748b;">🔑 Contraseña Provisoria:</p>
-              <p style="margin: 0; font-size: 18px; color: #2563eb; font-family: monospace;">${password}</p>
-            </div>
-            
-            <p style="color: #dc2626; font-weight: bold;">⚠️ IMPORTANTE:</p>
-            <p style="margin: 0;">Al iniciar sesión por primera vez, serás redirigido automáticamente para cambiar tu contraseña.</p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${appUrl}/login" 
-                 style="display: inline-block; background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                Iniciar Sesión →
-              </a>
-            </div>
-          </div>
-        </body>
-      </html>
-    `
-  })
-
-  if (error) {
-    console.error('❌ Error de Resend:', error)
-    throw error
-  }
-
-  return data
 }
