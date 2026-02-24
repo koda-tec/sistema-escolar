@@ -1,14 +1,10 @@
 'use client'
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useToast } from '@/app/components/Toast'
 
-export default async function DetalleComunicado({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
-  const { id } = await params;
+export default function DetalleComunicado({ params }: { params: { id: string } }) {
+  const { id } = params
   const [comunicado, setComunicado] = useState<any>(null)
   const [readInfo, setReadInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -20,12 +16,26 @@ export default async function DetalleComunicado({
       const { data: { user } } = await supabase.auth.getUser()
       
       // 1. Cargar el comunicado
-      const { data: comm } = await supabase.from('communications').select('*, profiles(full_name)').eq('id', id).single()
+      const { data: comm, error: commError } = await supabase
+        .from('communications')
+        .select('*, profiles(full_name)')
+        .eq('id', id)
+        .single()
+
+      if (commError) {
+        showToast('Error cargando comunicado', 'error')
+        setLoading(false)
+        return
+      }
       setComunicado(comm)
 
       // 2. Marcar como leído (solo si es padre)
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user?.id).single()
-      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user?.id)
+        .single()
+
       if (profile?.role === 'padre') {
         const { data: existingRead } = await supabase
           .from('communication_reads')
@@ -40,8 +50,10 @@ export default async function DetalleComunicado({
             parent_id: user?.id,
             read_at: new Date().toISOString()
           })
+          setReadInfo({ read_at: new Date().toISOString() })
+        } else {
+          setReadInfo(existingRead)
         }
-        setReadInfo(existingRead)
       }
       setLoading(false)
     }
@@ -59,10 +71,12 @@ export default async function DetalleComunicado({
     if (!error) {
       showToast("Comunicado confirmado", "success")
       window.location.reload()
+    } else {
+      showToast("Error al confirmar", "error")
     }
   }
 
-  if (loading) return <div className="p-20 text-center animate-pulse">Cargando mensaje...</div>
+  if (loading) return <div className="p-20 text-center animate-pulse">Cargando comunicado...</div>
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -85,14 +99,17 @@ export default async function DetalleComunicado({
         {comunicado.require_confirmation && (
           <div className="mt-12 p-8 bg-blue-50 rounded-3xl border border-blue-100 flex flex-col items-center text-center">
             <h4 className="font-bold text-blue-900 mb-2">Confirmación de Notificación</h4>
-            <p className="text-sm text-blue-700 mb-6">Este comunicado requiere que el padre o tutor confirme que ha recibido y entendido la información.</p>
+            <p className="text-sm text-blue-700 mb-6">Este comunicado requiere que confirmes que has recibido y entendido la información.</p>
             
             {readInfo?.confirmed_at ? (
               <div className="bg-green-100 text-green-700 px-6 py-2 rounded-full font-bold text-sm">
                 ✅ Confirmado el {new Date(readInfo.confirmed_at).toLocaleString()}
               </div>
             ) : (
-              <button onClick={handleConfirm} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+              <button 
+                onClick={handleConfirm} 
+                className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+              >
                 Confirmar Lectura
               </button>
             )}
