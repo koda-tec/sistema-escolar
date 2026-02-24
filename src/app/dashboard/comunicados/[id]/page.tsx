@@ -3,7 +3,13 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useToast } from '@/app/components/Toast'
 
-export default function DetalleComunicado({ params }: { params: { id: string } }) {
+interface DetalleComunicadoProps {
+  params: {
+    id: string
+  }
+}
+
+export default function DetalleComunicado({ params }: DetalleComunicadoProps) {
   const { id } = params
   const [comunicado, setComunicado] = useState<any>(null)
   const [readInfo, setReadInfo] = useState<any>(null)
@@ -14,8 +20,13 @@ export default function DetalleComunicado({ params }: { params: { id: string } }
   useEffect(() => {
     const fetchAndMarkRead = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      
-      // 1. Cargar el comunicado
+
+      if (!user) {
+        showToast('No se encontró el usuario', 'error')
+        setLoading(false)
+        return
+      }
+
       const { data: comm, error: commError } = await supabase
         .from('communications')
         .select('*, profiles(full_name)')
@@ -29,11 +40,10 @@ export default function DetalleComunicado({ params }: { params: { id: string } }
       }
       setComunicado(comm)
 
-      // 2. Marcar como leído (solo si es padre)
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single()
 
       if (profile?.role === 'padre') {
@@ -41,13 +51,13 @@ export default function DetalleComunicado({ params }: { params: { id: string } }
           .from('communication_reads')
           .select('*')
           .eq('communication_id', id)
-          .eq('parent_id', user?.id)
+          .eq('parent_id', user.id)
           .maybeSingle()
 
         if (!existingRead) {
           await supabase.from('communication_reads').insert({
             communication_id: id,
-            parent_id: user?.id,
+            parent_id: user.id,
             read_at: new Date().toISOString()
           })
           setReadInfo({ read_at: new Date().toISOString() })
@@ -58,15 +68,20 @@ export default function DetalleComunicado({ params }: { params: { id: string } }
       setLoading(false)
     }
     fetchAndMarkRead()
-  }, [id])
+  }, [id, supabase, showToast])
 
   const handleConfirm = async () => {
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      showToast('No se encontró el usuario', 'error')
+      return
+    }
+
     const { error } = await supabase
       .from('communication_reads')
       .update({ confirmed_at: new Date().toISOString() })
       .eq('communication_id', id)
-      .eq('parent_id', user?.id)
+      .eq('parent_id', user.id)
 
     if (!error) {
       showToast("Comunicado confirmado", "success")
@@ -106,10 +121,7 @@ export default function DetalleComunicado({ params }: { params: { id: string } }
                 ✅ Confirmado el {new Date(readInfo.confirmed_at).toLocaleString()}
               </div>
             ) : (
-              <button 
-                onClick={handleConfirm} 
-                className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-              >
+              <button onClick={handleConfirm} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
                 Confirmar Lectura
               </button>
             )}
