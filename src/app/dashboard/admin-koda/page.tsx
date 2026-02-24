@@ -14,7 +14,11 @@ export default function SuperAdminPage() {
   useEffect(() => { fetchSchools() }, [])
 
   async function fetchSchools() {
-    const { data } = await supabase.from('schools').select('*')
+    const { data, error } = await supabase.from('schools').select('*')
+    if (error) {
+      toast.error('Error cargando escuelas: ' + error.message)
+      return
+    }
     setSchools(data || [])
   }
 
@@ -22,7 +26,7 @@ export default function SuperAdminPage() {
     e.preventDefault()
     setLoading(true)
     
-    const { error } = await supabase.from('schools').insert({ name, slug })
+    const { error } = await supabase.from('schools').insert({ name, slug, active: true })
     
     if (error) {
       toast.error('Error: ' + error.message)
@@ -33,6 +37,33 @@ export default function SuperAdminPage() {
       fetchSchools()
     }
     setLoading(false)
+  }
+
+  async function toggleActive(schoolId: string, currentState: boolean) {
+    const { error } = await supabase
+      .from('schools')
+      .update({ active: !currentState })
+      .eq('id', schoolId)
+
+    if (error) {
+      toast.error('Error al actualizar estado: ' + error.message)
+    } else {
+      toast.success(`Escuela ${!currentState ? 'habilitada' : 'inhabilitada'}`)
+      fetchSchools()
+    }
+  }
+
+  async function deleteSchool(schoolId: string) {
+    if (!confirm('¿Seguro que querés eliminar esta escuela? Esta acción es irreversible.')) return
+
+    const { error } = await supabase.from('schools').delete().eq('id', schoolId)
+
+    if (error) {
+      toast.error('Error al eliminar la escuela: ' + error.message)
+    } else {
+      toast.success('Escuela eliminada correctamente')
+      fetchSchools()
+    }
   }
 
   return (
@@ -52,9 +83,26 @@ export default function SuperAdminPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {schools.map(s => (
-          <div key={s.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-            <h3 className="font-bold text-slate-800">{s.name}</h3>
+          <div key={s.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm relative">
+            <h3 className="font-bold text-slate-800">{s.name} {s.active ? '' : '(Inhabilitada)'}</h3>
             <p className="text-[10px] text-slate-400 font-mono mt-1">ID: {s.id}</p>
+
+            <div className="mt-4 flex gap-2">
+              <button 
+                onClick={() => toggleActive(s.id, s.active)}
+                className={`px-4 py-2 rounded-lg text-white font-bold ${
+                  s.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-600 hover:bg-green-700'}`}
+              >
+                {s.active ? 'Inhabilitar' : 'Habilitar'}
+              </button>
+
+              <button 
+                onClick={() => deleteSchool(s.id)}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
         ))}
       </div>
