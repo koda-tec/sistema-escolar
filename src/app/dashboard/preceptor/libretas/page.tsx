@@ -94,22 +94,23 @@ export default function LibretasPage() {
     fetchLibretas()
   }, [selectedCurso, supabase])
 
+  // ... (dentro de tu componente LibretasPage, reemplaza la función handleUpload)
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
-    setUploading(true)
-
-    // Validaciones
+    
+    // Validaciones iniciales
     if (!selectedCurso || !selectedAlumno || !file || !trimestre || !anio) {
       toast.error('Por favor, completá todos los campos')
-      setUploading(false)
       return
     }
 
     if (file.type !== 'application/pdf') {
       toast.error('Solo se permiten archivos PDF')
-      setUploading(false)
       return
     }
+
+    setUploading(true)
 
     try {
       const formData = new FormData()
@@ -119,6 +120,7 @@ export default function LibretasPage() {
       formData.append('trimestre', trimestre)
       formData.append('anio', anio)
 
+      // 1. Subida del archivo y registro en DB
       const response = await fetch('/api/libretas/upload', {
         method: 'POST',
         body: formData
@@ -129,13 +131,30 @@ export default function LibretasPage() {
       if (result.error) {
         toast.error(result.error)
       } else {
-        toast.success('¡Libreta subida correctamente!')
+        // --- INICIO LÓGICA DE NOTIFICACIÓN ---
+        // Si la subida fue exitosa, disparamos el mail al padre
+        try {
+          await fetch('/api/libretas/notificar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              studentId: selectedAlumno, 
+              trimestre: trimestre, 
+              anio: anio 
+            })
+          });
+          toast.success('¡Libreta cargada y tutor notificado por email!');
+        } catch (notifError) {
+          console.error("Error al notificar:", notifError);
+          toast.success('Libreta cargada (pero hubo un error al enviar el mail)');
+        }
+        // --- FIN LÓGICA DE NOTIFICACIÓN ---
         
         // Limpiar formulario
         setFile(null)
         setSelectedAlumno('')
         
-        // Recargar libretas
+        // Recargar la lista de libretas para mostrar la nueva
         const { data } = await supabase
           .from('libretas')
           .select(`
@@ -149,13 +168,14 @@ export default function LibretasPage() {
         setLibretas(data || [])
       }
     } catch (error) {
-      console.error('Error:', error)
-      toast.error('Error al subir la libreta')
+      console.error('Error general:', error)
+      toast.error('Error al procesar la libreta')
+    } finally {
+      setUploading(false)
     }
-
-    setUploading(false)
   }
 
+  
   const handleDelete = async (libretaId: string) => {
     if (!confirm('¿Estás seguro de eliminar esta libreta?')) return
 
