@@ -7,8 +7,8 @@ export default function GestionCursos() {
   const [courses, setCourses] = useState<any[]>([])
   const [newName, setNewName] = useState('')
   const [newSection, setNewSection] = useState('')
+  const [newShift, setNewShift] = useState('Mañana') // Turno por defecto
   const [loading, setLoading] = useState(false)
-  
   const supabase = createClient()
 
   useEffect(() => {
@@ -23,73 +23,106 @@ export default function GestionCursos() {
       .from('courses')
       .select('*')
       .eq('school_id', profile?.school_id)
+      .order('shift', { ascending: true }) // Ordenamos primero por turno
+      .order('name', { ascending: true })  // Luego por año
     setCourses(data || [])
   }
 
   async function addCourse(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
 
     const { error } = await supabase.from('courses').insert({
       name: newName,
       section: newSection,
+      shift: newShift,
       school_id: profile?.school_id
     })
-    
+
     if (error) {
-      toast.error('Error: ' + error.message)
+      if (error.code === '23505') {
+        toast.error("Este curso ya existe en este turno.")
+      } else {
+        toast.error("Error: " + error.message)
+      }
     } else {
-      toast.success('Curso creado correctamente')
-      setNewName('')
-      setNewSection('')
+      toast.success("Curso creado exitosamente")
+      setNewName(''); setNewSection('');
       fetchCourses()
     }
     setLoading(false)
   }
 
+  // Agrupamos los cursos por turno para la vista
+  const turnos = ['Mañana', 'Tarde', 'Noche']
+
   return (
-    <div className="space-y-6 md:space-y-8">
-      <h1 className="text-2xl font-bold text-slate-900">Gestión de Cursos</h1>
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <header className="text-left">
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic">Gestión de Cursos</h1>
+        <p className="text-slate-500 font-medium">Configurá la estructura académica de la institución.</p>
+      </header>
       
-      <form onSubmit={addCourse} className="bg-white p-6 rounded-3xl shadow-sm border grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-        <div className="md:col-span-2">
-          <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">Año / Grado</label>
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: 1er Año" className="w-full mt-1 p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900 font-medium" required />
+      {/* Formulario de Creación Responsivo */}
+      <form onSubmit={addCourse} className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4 items-end text-left">
+        <div className="md:col-span-1">
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Año / Grado</label>
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: 1er Año" className="w-full mt-1 p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-bold" required />
         </div>
         <div className="md:col-span-1">
-          <label className="text-[11px] font-bold text-slate-900 uppercase ml-1">División</label>
-          <input value={newSection} onChange={e => setNewSection(e.target.value)} placeholder="Ej: A" className="w-full mt-1 p-3 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all outline-none text-slate-900 font-medium" required />
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">División</label>
+          <input value={newSection} onChange={e => setNewSection(e.target.value)} placeholder="Ej: A" className="w-full mt-1 p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-bold" required />
         </div>
-        <button disabled={loading} className="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95">
+        <div className="md:col-span-1">
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Turno</label>
+          <select value={newShift} onChange={e => setNewShift(e.target.value)} className="w-full mt-1 p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-bold">
+            <option value="Mañana">☀️ Mañana</option>
+            <option value="Tarde">🌤️ Tarde</option>
+            <option value="Noche">🌙 Noche</option>
+          </select>
+        </div>
+        <button disabled={loading} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">
           {loading ? '...' : 'Crear Curso'}
         </button>
       </form>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {courses.map(c => (
-          <div key={c.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-300 transition-all group">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-bold text-xl text-slate-900 group-hover:text-blue-600 transition-colors">{c.name}</h3>
-                <p className="text-blue-600 font-black text-2xl uppercase">División "{c.section}"</p>
+      {/* Visualización Organizada por Turnos */}
+      <div className="space-y-12 text-left">
+        {turnos.map(turno => {
+          const cursosDelTurno = courses.filter(c => c.shift === turno)
+          if (cursosDelTurno.length === 0) return null
+
+          return (
+            <div key={turno} className="space-y-6">
+              <div className="flex items-center gap-4">
+                <h2 className={`text-xl font-black uppercase tracking-tighter ${
+                  turno === 'Mañana' ? 'text-blue-600' : turno === 'Tarde' ? 'text-orange-600' : 'text-indigo-600'
+                }`}>
+                  Turno {turno}
+                </h2>
+                <div className="h-px flex-1 bg-slate-100"></div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">{cursosDelTurno.length} cursos</span>
               </div>
-              <div className="bg-slate-100 p-2 rounded-lg text-slate-400 font-bold text-xs uppercase">
-                ID: {c.id.slice(0,5)}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {cursosDelTurno.map(c => (
+                  <div key={c.id} className="bg-white p-6 rounded-2rem border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-slate-50 opacity-50 rounded-bl-3xl transition-colors group-hover:bg-blue-50"></div>
+                    <h3 className="font-black text-2xl text-slate-900 leading-none mb-1">{c.name}</h3>
+                    <p className="text-blue-600 font-black text-xs uppercase tracking-[0.2em]">División "{c.section}"</p>
+                    <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center text-[9px] font-black text-slate-300 uppercase">
+                        <span>ID: {c.id.slice(0,8)}</span>
+                        <span className="group-hover:text-blue-400">ACTIVO</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-              <span>Estado: Activo</span>
-              <span>SaaS ID: {c.school_id?.slice(0,5)}</span>
-            </div>
-          </div>
-        ))}
-        {courses.length === 0 && (
-           <div className="col-span-full py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-              <p className="text-slate-400 font-medium">No hay cursos registrados todavía.</p>
-           </div>
-        )}
+          )
+        })}
       </div>
     </div>
   )
