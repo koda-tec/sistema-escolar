@@ -10,7 +10,7 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
   const { data: hijos } = await supabase.from('students').select('id, full_name').eq('parent_id', user?.id);
   const idsHijos = hijos?.map(h => h.id) || [];
 
-  // 2. Consultas en paralelo incluyendo las notas enviadas
+  // 2. Consultas en paralelo
   const [commCount, libCount, asistHoy, misNotas] = await Promise.all([
     supabase.from('communications').select('*', { count: 'exact', head: true }).eq('school_id', profile?.school_id),
     supabase.from('libretas').select('*', { count: 'exact', head: true }).in('student_id', idsHijos),
@@ -18,7 +18,7 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
     supabase.from('parent_requests').select('*').eq('parent_id', user?.id).order('created_at', { ascending: false }).limit(3)
   ]);
 
-  // 3. Lógica de estado de asistencia corregida
+  // 3. Lógica de asistencia
   let estadoAsistencia = "--";
   let colorAsistencia = "green";
   if (idsHijos.length > 0) {
@@ -47,7 +47,7 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-10">
       
-      {/* BANNER DE PAGO (Solo si no pagó) */}
+      {/* BANNER DE PAGO */}
       {!isPaid && (
         <div className="relative overflow-hidden bg-slate-950 p-8 rounded-[2.5rem] text-white shadow-2xl border border-white/5">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-[100px] rounded-full -mr-20 -mt-20"></div>
@@ -87,24 +87,38 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
           </div>
         </div>
 
-        {/* MIS NOTAS ENVIADAS (FEEDBACK PARA EL PADRE) */}
+        {/* MODIFICACIÓN: MIS NOTAS ENVIADAS CON RESPUESTA */}
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm text-left">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Mis Notas a Preceptoría</h3>
           <div className="space-y-4">
             {misNotas.data?.map((nota: any) => (
-              <div key={nota.id} className="border-b border-slate-50 pb-4 last:border-0">
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{nota.type}</span>
+              <div key={nota.id} className="bg-slate-50/50 p-4 rounded-1.5rem border border-slate-100 space-y-2">
+                <div className="flex justify-between items-start">
+                  <span className="text-[9px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md tracking-tighter">
+                    {nota.type}
+                  </span>
                   <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                    nota.status === 'pendiente' ? 'bg-slate-100 text-slate-500' :
+                    nota.status === 'pendiente' ? 'bg-red-50 text-red-600' :
                     nota.status === 'leido' ? 'bg-amber-100 text-amber-600' :
                     'bg-green-100 text-green-600'
                   }`}>
                     {nota.status}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 line-clamp-1 italic">"{nota.note}"</p>
-                <p className="text-[9px] text-slate-300 mt-1 font-bold">{new Date(nota.created_at).toLocaleDateString('es-AR')}</p>
+                
+                <p className="text-xs text-slate-500 italic">" {nota.note} "</p>
+
+                {/* RESPUESTA DEL PRECEPTOR INTEGRADA */}
+                {nota.response_text && (
+                  <div className="mt-2 p-3 bg-white rounded-xl border-l-4 border-blue-500 shadow-sm animate-in slide-in-from-left-2">
+                    <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Respuesta de Preceptoría:</p>
+                    <p className="text-xs text-slate-800 font-bold leading-tight">{nota.response_text}</p>
+                  </div>
+                )}
+                
+                <p className="text-[8px] text-slate-300 font-bold uppercase tracking-widest pt-1">
+                  {new Date(nota.created_at).toLocaleDateString('es-AR')}
+                </p>
               </div>
             ))}
             {misNotas.data?.length === 0 && (

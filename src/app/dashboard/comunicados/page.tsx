@@ -1,4 +1,5 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import Link from 'next/link'
@@ -9,68 +10,64 @@ export default function ComunicadosPage() {
   const [notasPadres, setNotasPadres] = useState<any[]>([])
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [respuestas, setRespuestas] = useState<Record<string, string>>({}) // Estado para los inputs de respuesta
+  
   const supabase = createClient()
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        const { data: profData } = await supabase
-          .from('profiles')
-          .select('id, role, subscription_active, school_id')
-          .eq('id', user?.id)
-          .maybeSingle()
-        
-        setProfile(profData)
-
-        if (!profData) return
-
-        // 1. CARGAR COMUNICADOS GENERALES (Filtrados por RLS)
-        const { data: comms, error: errComms } = await supabase
-          .from('communications')
-          .select(`*, profiles(full_name)`)
-          .eq('school_id', profData.school_id)
-          .order('created_at', { ascending: false })
-        
-        setComunicados(comms || [])
-
-        // 2. LÓGICA PARA PRECEPTOR: Notas de Padres
-        if (profData.role?.toLowerCase() === 'preceptor') {
-          const { data: asignaciones } = await supabase
-            .from('preceptor_courses')
-            .select('course_id')
-            .eq('preceptor_id', profData.id)
-          
-          const idsCursos = asignaciones?.map(a => a.course_id) || []
-
-          if (idsCursos.length > 0) {
-            const { data: notas } = await supabase
-              .from('parent_requests')
-              .select(`
-                *,
-                profiles:parent_id (full_name),
-                students:student_id (
-                  id,
-                  full_name, 
-                  course_id, 
-                  courses(name, section)
-                )
-              `)
-              .in('students.course_id', idsCursos)
-              .order('created_at', { ascending: false })
-            
-            setNotasPadres(notas || [])
-          }
-        }
-      } catch (error) {
-        console.error("Crash fetchData:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchData()
-  }, [supabase])
+  }, [])
 
+  const fetchData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: profData } = await supabase
+        .from('profiles')
+        .select('id, role, subscription_active, school_id')
+        .eq('id', user?.id)
+        .maybeSingle()
+      
+      setProfile(profData)
+      if (!profData) return
+
+      // 1. Cargar Comunicados Generales
+      const { data: comms } = await supabase
+        .from('communications')
+        .select(`*, profiles(full_name)`)
+        .eq('school_id', profData.school_id)
+        .order('created_at', { ascending: false })
+      setComunicados(comms || [])
+
+      // 2. Si es Preceptor, cargar Notas de Padres de sus cursos
+      if (profData.role?.toLowerCase() === 'preceptor') {
+        const { data: asignaciones } = await supabase
+          .from('preceptor_courses')
+          .select('course_id')
+          .eq('preceptor_id', profData.id)
+        
+        const idsCursos = asignaciones?.map(a => a.course_id) || []
+
+        if (idsCursos.length > 0) {
+          const { data: notas } = await supabase
+            .from('parent_requests')
+            .select(`
+              *,
+              profiles:parent_id (full_name),
+              students:student_id (id, full_name, course_id, courses(name, section))
+            `)
+            .in('students.course_id', idsCursos)
+            .order('created_at', { ascending: false })
+          setNotasPadres(notas || [])
+        }
+      }
+    } catch (error) {
+      console.error("Error en fetchData:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // FUNCIÓN: ACTUALIZAR ESTADO (La que faltaba)
   const handleUpdateStatus = async (notaId: string, nuevoEstado: string) => {
     const { error } = await supabase
       .from('parent_requests')
@@ -78,16 +75,14 @@ export default function ComunicadosPage() {
       .eq('id', notaId)
     
     if (!error) {
-      toast.success("Estado actualizado")
+      toast.success(`Estado: ${nuevoEstado}`)
       setNotasPadres(prev => prev.map(n => n.id === notaId ? {...n, status: nuevoEstado} : n))
     }
   }
 
-  // --- NUEVA FUNCIÓN: JUSTIFICADOR AUTOMÁTICO ---
+  // FUNCIÓN: JUSTIFICAR FALTA AUTOMÁTICAMENTE
   const handleJustificarFalta = async (nota: any) => {
     const fechaNota = new Date(nota.created_at).toISOString().split('T')[0]
-    
-    // 1. Buscamos y actualizamos la falta en la tabla 'attendance'
     const { data, error } = await supabase
       .from('attendance')
       .update({ status: 'justificado' })
@@ -96,33 +91,56 @@ export default function ComunicadosPage() {
       .select()
 
     if (error || data.length === 0) {
-      toast.error("No se encontró un 'Ausente' oficial para esta fecha")
+      toast.error("No se encontró inasistencia oficial para esta fecha")
     } else {
-      // 2. Si se justificó bien, marcamos la nota como respondida
       await supabase.from('parent_requests').update({ status: 'respondido' }).eq('id', nota.id)
-      toast.success("Falta justificada en el registro oficial")
-      
-      // Actualizamos UI local
-      setNotasPadres(prev => prev.map(n => n.id === nota.id ? {...n, status: 'respondido'} : n))
+      toast.success("Falta justificada correctamente")
+      fetchData()
+    }
+  }
+
+  // FUNCIÓN: ENVIAR RESPUESTA POR ESCRITO
+  const handleSendResponse = async (notaId: string) => {
+    const respuesta = respuestas[notaId]
+    if (!respuesta) return toast.error("Escribí un mensaje primero")
+
+    const { error } = await supabase
+      .from('parent_requests')
+      .update({ 
+        response_text: respuesta, 
+        status: 'respondido',
+        responded_at: new Date().toISOString()
+      })
+      .eq('id', notaId)
+
+    if (!error) {
+      // Notificar al padre vía API
+      fetch('/api/solicitudes/notificar-padre', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: notaId })
+      })
+      toast.success("Respuesta enviada")
+      setRespuestas(prev => { const n = {...prev}; delete n[notaId]; return n; })
+      fetchData()
     }
   }
 
   if (loading) return (
     <div className="p-20 text-center animate-pulse flex flex-col items-center gap-4">
       <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600"></div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sincronizando Mensajes</p>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-sans">Sincronizando Mensajes</p>
     </div>
   )
 
   const userRole = profile?.role?.toLowerCase().trim()
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 pb-20 text-left">
+    <div className="space-y-10 animate-in fade-in duration-700 pb-20 text-left font-sans text-slate-900">
       
-      {/* HEADER */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-left">
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic leading-none">Comunicación</h1>
+          <h1 className="text-3xl font-black tracking-tight uppercase italic leading-none">Comunicación</h1>
           <p className="text-slate-500 font-medium mt-2">Bandeja de mensajes y avisos oficiales.</p>
         </div>
         
@@ -142,64 +160,91 @@ export default function ComunicadosPage() {
       {/* SECCIÓN PRECEPTOR: NOTAS DE PADRES */}
       {userRole === 'preceptor' && (
         <section className="space-y-6">
-          <div className="flex items-center gap-3 ml-2 text-left">
-             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-xl shadow-inner">📥</div>
-             <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Notas de Padres</h2>
+          <div className="flex items-center justify-between ml-2">
+             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-amber-200 text-white">📥</div>
+                <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900">Notas de Padres</h2>
+             </div>
+             <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
+               {notasPadres.length} Pendientes
+             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-6 text-left">
             {notasPadres.length > 0 ? (
               notasPadres.map((nota) => (
-                <div key={nota.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between gap-6 transition-all hover:border-amber-300 relative overflow-hidden">
-                  
-                  <div className="flex-1 text-left space-y-3">
-                    <div className="flex items-center gap-2">
-                       <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">
-                         {nota.type}
-                       </span>
-                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                         {new Date(nota.created_at).toLocaleString('es-AR')}
-                       </span>
-                    </div>
-                    <p className="text-slate-900 font-bold leading-relaxed text-lg">"{nota.note}"</p>
-                    <div className="pt-2 border-t border-slate-50">
-                      <p className="text-xs text-slate-500 font-medium">
-                        Tutor: <span className="text-slate-900 font-bold">{nota.profiles?.full_name}</span>
-                      </p>
-                      <p className="text-xs text-slate-500 font-medium">
-                        Alumno: <span className="text-blue-600 font-black uppercase italic">{nota.students?.full_name} ({nota.students?.courses?.name})</span>
-                      </p>
-                    </div>
-                  </div>
+                <div key={nota.id} className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-200 shadow-sm transition-all hover:shadow-md relative overflow-hidden group">
+                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${nota.status === 'pendiente' ? 'bg-red-500' : 'bg-green-500'}`}></div>
 
-                  <div className="flex flex-col gap-2 justify-center min-w-150px">
-                     {/* BOTÓN JUSTIFICAR AUTOMÁTICO */}
-                     {nota.type === 'inasistencia' && nota.status !== 'respondido' && (
-                        <button 
-                          onClick={() => handleJustificarFalta(nota)}
-                          className="w-full bg-green-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg shadow-green-100 mb-1"
-                        >
-                          ✅ Justificar Falta
-                        </button>
-                     )}
-                     
-                     <select 
-                        value={nota.status}
-                        onChange={(e) => handleUpdateStatus(nota.id, e.target.value)}
-                        className={`w-full text-[10px] font-black uppercase px-4 py-2.5 rounded-xl border-none outline-none transition-all cursor-pointer ${
-                          nota.status === 'pendiente' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
-                        }`}
-                     >
-                       <option value="pendiente">Marcar Pendiente</option>
-                       <option value="leido">Marcar Leído</option>
-                       <option value="respondido">Marcar Respondido</option>
-                     </select>
+                  <div className="flex flex-col gap-6 text-left">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
+                      <div className="space-y-1 text-left">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                            nota.type === 'inasistencia' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                          }`}>
+                            {nota.type}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
+                            {new Date(nota.created_at).toLocaleString('es-AR')}
+                          </span>
+                        </div>
+                        <p className="text-lg font-bold text-slate-900 leading-tight">"{nota.note}"</p>
+                      </div>
+
+                      <div className="flex flex-col md:items-end gap-1 text-left md:text-right">
+                         <p className="text-xs font-black text-slate-900 notranslate">{nota.profiles?.full_name}</p>
+                         <p className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter italic leading-none">
+                           Tutor de: {nota.students?.full_name} ({nota.students?.courses?.name})
+                         </p>
+                      </div>
+                    </div>
+
+                    {nota.response_text && (
+                      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 animate-in fade-in zoom-in text-left">
+                        <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Tu Respuesta:</p>
+                        <p className="text-sm text-slate-700 font-medium italic leading-relaxed">"{nota.response_text}"</p>
+                      </div>
+                    )}
+
+                    {!nota.response_text && (
+                      <div className="space-y-4 pt-2 text-left">
+                        <textarea
+                          value={respuestas[nota.id] || ''}
+                          onChange={(e) => setRespuestas({ ...respuestas, [nota.id]: e.target.value })}
+                          placeholder="Escribí una respuesta oficial para el padre..."
+                          className="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500 border-none text-slate-900 font-medium transition-all"
+                          rows={2}
+                        />
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          {nota.type === 'inasistencia' && nota.status !== 'respondido' && (
+                            <button onClick={() => handleJustificarFalta(nota)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 active:scale-95">✅ Justificar</button>
+                          )}
+                          <button onClick={() => handleSendResponse(nota.id)} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-100 active:scale-95">Enviar Respuesta ✉️</button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-slate-50 flex justify-between items-center text-left">
+                       <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">Gestión</p>
+                       <select 
+                          value={nota.status}
+                          onChange={(e) => handleUpdateStatus(nota.id, e.target.value)}
+                          className={`text-[9px] font-black uppercase px-3 py-1.5 rounded-lg border-none outline-none cursor-pointer transition-all ${
+                            nota.status === 'pendiente' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+                          }`}
+                       >
+                         <option value="pendiente">Pendiente</option>
+                         <option value="leido">Leído</option>
+                         <option value="respondido">Respondido</option>
+                       </select>
+                    </div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="p-12 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold italic">
-                No has recibido notas de familias vinculadas.
+              <div className="p-12 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold italic">
+                No hay notas pendientes de familias.
               </div>
             )}
           </div>
@@ -210,28 +255,21 @@ export default function ComunicadosPage() {
       <section className="space-y-6 pt-10 border-t border-slate-100 text-left">
         <div className="flex items-center gap-3 ml-2 text-left">
              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-200 text-white">📣</div>
-             <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Canal Oficial</h2>
+             <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Canal Oficial</h2>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
           {comunicados.map((c) => (
-            <Link 
-              key={c.id} 
-              href={`/dashboard/comunicados/${c.id}`}
-              className="bg-white p-7 rounded-[2.5rem] border border-slate-200 hover:border-blue-500 hover:shadow-xl transition-all group flex justify-between items-center text-left"
-            >
+            <Link key={c.id} href={`/dashboard/comunicados/${c.id}`} className="bg-white p-7 rounded-[2.5rem] border border-slate-200 hover:border-blue-500 hover:shadow-xl transition-all group flex justify-between items-center text-left">
               <div className="space-y-2 text-left">
-                <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-none italic">{c.title}</h3>
+                <h3 className="text-xl font-black group-hover:text-blue-600 transition-colors leading-none italic text-slate-900">{c.title}</h3>
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] leading-none">
-                  {new Date(c.created_at).toLocaleDateString('es-AR')} • Emitido por {c.profiles?.full_name}
+                  {new Date(c.created_at).toLocaleDateString('es-AR')} • Por {c.profiles?.full_name}
                 </p>
               </div>
-              <span className="text-slate-300 group-hover:text-blue-600 transition-all text-2xl group-hover:translate-x-1 duration-300">➜</span>
+              <span className="text-slate-300 group-hover:text-blue-600 transition-all text-2xl group-hover:translate-x-1">➜</span>
             </Link>
           ))}
-          {comunicados.length === 0 && (
-            <p className="p-10 text-center text-slate-400 italic font-bold uppercase text-xs tracking-widest">Sin anuncios publicados.</p>
-          )}
         </div>
       </section>
     </div>
