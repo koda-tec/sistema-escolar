@@ -160,7 +160,7 @@ export default function GestionPersonal() {
         </div>
 
         {/* ASIGNACIÓN DE CURSOS (Solo para Preceptores) */}
-        {/* Reemplaza la sección de ASIGNACIÓN DE CURSOS por esta: */}
+{/* Reemplaza la sección de ASIGNACIÓN DE CURSOS por esta: */}
 {role === 'preceptor' && (
   <div className="space-y-6 pt-6 border-t border-slate-100">
     <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Asignar Cursos por Turno:</h3>

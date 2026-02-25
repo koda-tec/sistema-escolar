@@ -52,42 +52,36 @@ export default function ComunicadosPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Comunicados</h1>
-          <p className="text-slate-500 font-medium">Canal oficial de la institución.</p>
-        </div>
-        
-        {/* CORRECCIÓN: Usamos profile.role en lugar de role directamente */}
-        
-        {/* Botón para STAFF (Directivos, Docentes, Preceptores) */}
-        {profile?.role && ['directivo', 'docente', 'preceptor', 'admin_koda'].includes(profile.role) && (
-          <Link 
-            href="/dashboard/comunicados/nuevo" 
-            className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95"
-          >
-            + Emitir Comunicado
-          </Link>
-        )}
-        {profile?.role === 'preceptor' && (
-          <div className="mt-12 space-y-6">
-            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">🔔 Notas recibidas de padres</h2>
-            {/* Aquí harías un fetch a la tabla 'parent_requests' filtrando por los alumnos de los cursos del preceptor */}
-            <div className="bg-amber-50 p-6 rounded-2rem border border-amber-100 text-sm text-amber-800 font-medium italic">
-              Sección de mensajes entrantes en desarrollo...
-            </div>
-          </div>
-        )}
-        {/* Botón para PADRES */}
-        {profile?.role === 'padre' && (
-          <Link 
-            href="/dashboard/comunicados/solicitud" 
-            className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:bg-black transition-all active:scale-95"
-          >
-            ✉️ Enviar Nota a Preceptoría
-          </Link>
-        )}
-      </header>
+<header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+  <div>
+    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Comunicados</h1>
+    <p className="text-slate-500 font-medium">Canal oficial de la institución.</p>
+  </div>
+  
+  {/* Botón para STAFF */}
+  {['directivo', 'docente', 'preceptor', 'admin_koda'].includes(profile?.role) && (
+    <Link href="/dashboard/comunicados/nuevo" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all">
+      + Emitir Comunicado
+    </Link>
+  )}
+
+  {profile?.role === 'preceptor' && (
+  <div className="mt-12 space-y-6">
+    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">🔔 Notas recibidas de padres</h2>
+    {/* Aquí harías un fetch a la tabla 'parent_requests' filtrando por los alumnos de los cursos del preceptor */}
+    <div className="bg-amber-50 p-6 rounded-2rem border border-amber-100 text-sm text-amber-800 font-medium italic">
+      Sección de mensajes entrantes en desarrollo...
+    </div>
+  </div>
+)}
+
+  {/* Botón para PADRES */}
+  {profile?.role === 'padre' && (
+    <Link href="/dashboard/comunicados/solicitud" className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:bg-black transition-all">
+      ✉️ Enviar Nota a Preceptoría
+    </Link>
+  )}
+</header>
 
       <div className="grid grid-cols-1 gap-4">
         {comunicados.map((c) => (
