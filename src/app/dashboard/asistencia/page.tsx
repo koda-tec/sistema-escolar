@@ -54,40 +54,54 @@ export default async function AsistenciaPage() {
 
       {courses.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((c) => (
-            <Link 
-              key={c.id} 
-              href={`/dashboard/asistencia/${c.id}`}
-              className="bg-white p-8 rounded-[2.5rem] border border-slate-200 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-900/10 transition-all group relative overflow-hidden"
-            >
-              {/* Decoración sutil */}
-              <div className="absolute top-0 right-0 w-20 h-20 bg-blue-50 opacity-0 group-hover:opacity-100 rounded-bl-full transition-opacity"></div>
+        {courses.map((c) => (
+          <div 
+            key={c.id} 
+            className="bg-white p-8 rounded-[2.5rem] border border-slate-200 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-900/10 transition-all group relative overflow-hidden flex flex-col justify-between"
+          >
+            {/* Decoración sutil */}
+            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-50 opacity-0 group-hover:opacity-100 rounded-bl-full transition-opacity"></div>
+            
+            <div className="flex flex-col gap-4 text-left">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-xl group-hover:bg-blue-600 transition-colors duration-500">
+                <span className="group-hover:scale-110 transition-transform duration-500 grayscale group-hover:grayscale-0">📝</span>
+              </div>
               
-              <div className="flex flex-col gap-4 text-left">
-                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-xl group-hover:bg-blue-600 transition-colors duration-500">
-                  <span className="group-hover:scale-110 transition-transform duration-500 grayscale group-hover:grayscale-0">📝</span>
-                </div>
-                
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900 leading-none mb-1">
-                    {c.name}
-                  </h3>
-                  <p className="text-blue-600 font-black text-xs uppercase tracking-[0.2em]">
-                    División "{c.section}"
-                  </p>
+              <div>
+                <h3 className="text-2xl font-black text-slate-900 leading-none mb-1">
+                  {c.name}
+                </h3>
+                <p className="text-blue-600 font-black text-xs uppercase tracking-[0.2em]">
+                  División "{c.section}"
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-slate-50 flex flex-col gap-3">
+                <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      {c.shift || 'Turno Mañana'}
+                    </span>
                 </div>
 
-                <div className="pt-4 border-t border-slate-50 flex justify-between items-center">
-                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                     {c.shift || 'Turno Mañana'}
-                   </span>
-                   <span className="bg-slate-900 text-white p-2 rounded-lg text-[10px] font-black opacity-0 group-hover:opacity-100 transition-opacity">
-                     PASAR LISTA
-                   </span>
-                </div>
+                {/* BOTÓN 1: PASAR LISTA */}
+                <Link 
+                    href={`/dashboard/asistencia/${c.id}`}
+                    className="w-full bg-slate-900 text-white py-3 rounded-2xl text-[10px] font-black text-center uppercase tracking-widest hover:bg-blue-600 transition-all"
+                >
+                  PASAR LISTA
+                </Link>
+
+                {/* BOTÓN 2: NUEVO DETALLE */}
+                <Link 
+                    href={`/dashboard/admin/cursos/${c.id}`} 
+                    className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 text-center transition-colors"
+                  >
+                    👁️ Ver Alumnos y Profesores
+                  </Link>
               </div>
-            </Link>
-          ))}
+            </div>
+          </div>
+        ))}
         </div>
       ) : (
         <div className="bg-white p-20 rounded-[3rem] border-2 border-dashed border-slate-200 text-center space-y-4">

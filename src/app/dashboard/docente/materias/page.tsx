@@ -222,7 +222,7 @@ export default function MisMaterias() {
 
               <div className="mt-6 flex flex-col gap-2">
                 <Link 
-                  href={`/dashboard/docente/materias/${item.courses.id}`} 
+                  href={`/dashboard/admin/cursos/${item.courses.id}`} 
                   className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-sm font-bold hover:bg-black text-center"
                   >
                 Ver Alumnos

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import toast from 'react-hot-toast'
+import Link from 'next/link'
 
 export default function GestionCursos() {
   const [courses, setCourses] = useState<any[]>([])
@@ -97,6 +98,7 @@ export default function GestionCursos() {
 
           return (
             <div key={turno} className="space-y-6">
+              {/* Header del Turno */}
               <div className="flex items-center gap-4">
                 <h2 className={`text-xl font-black uppercase tracking-tighter ${
                   turno === 'Mañana' ? 'text-blue-600' : turno === 'Tarde' ? 'text-orange-600' : 'text-indigo-600'
@@ -107,17 +109,21 @@ export default function GestionCursos() {
                 <span className="text-[10px] font-bold text-slate-400 uppercase">{cursosDelTurno.length} cursos</span>
               </div>
 
+              {/* Grilla de Cursos */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {cursosDelTurno.map(c => (
-                  <div key={c.id} className="bg-white p-6 rounded-2rem border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-slate-50 opacity-50 rounded-bl-3xl transition-colors group-hover:bg-blue-50"></div>
-                    <h3 className="font-black text-2xl text-slate-900 leading-none mb-1">{c.name}</h3>
+                  <Link 
+                    key={c.id} 
+                    href={`/dashboard/admin/cursos/${c.id}`} 
+                    className="bg-white p-6 rounded-2rem border border-slate-100 hover:border-blue-500 transition-all group"
+                  >
+                    <h3 className="font-black text-2xl text-slate-900">{c.name}</h3>
                     <p className="text-blue-600 font-black text-xs uppercase tracking-[0.2em]">División "{c.section}"</p>
                     <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center text-[9px] font-black text-slate-300 uppercase">
-                        <span>ID: {c.id.slice(0,8)}</span>
-                        <span className="group-hover:text-blue-400">ACTIVO</span>
+                      <span>ID: {c.id.slice(0,8)}</span>
+                      <span className="group-hover:text-blue-400">ACTIVO</span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
