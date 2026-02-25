@@ -28,44 +28,74 @@ export default function NuevoComunicado() {
     fetchInitialData()
   }, [])
 
-  async function fetchInitialData() {
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user?.id).single()
-    setUserProfile(profile)
+async function fetchInitialData() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-    // Traer solo los cursos asignados al preceptor (con el nombre y turno)
-    const { data: asignaciones } = await supabase
-      .from('preceptor_courses')
-      .select('course_id, courses(id, name, section, shift)')
-      .eq('preceptor_id', user?.id)
-    
-    const listaCursos = asignaciones?.map((a: any) => a.courses) || []
-    setCursosAsignados(listaCursos)
-    setLoading(false)
+      // 1. Traer perfil
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      setUserProfile(profile)
+
+      console.log("🔍 Rol del usuario:", profile?.role)
+
+      // 2. Traer cursos (Diferenciando por Rol)
+      if (profile?.role?.toLowerCase() === 'preceptor') {
+        // SI ES PRECEPTOR: Buscamos solo los cursos asignados en la tabla intermedia
+        const { data: asignaciones, error: errAsig } = await supabase
+          .from('preceptor_courses')
+          .select(`
+            course_id,
+            courses (id, name, section, shift)
+          `)
+          .eq('preceptor_id', user.id)
+
+        if (errAsig) console.error("❌ Error Supabase:", errAsig)
+        
+        console.log("📊 Datos crudos de asignaciones:", asignaciones)
+
+        // Mapeo seguro: extraemos el objeto 'courses' anidado
+        const listaCursos = asignaciones
+          ?.map((a: any) => a.courses)
+          .filter(c => c !== null) || []
+        
+        console.log("✅ Cursos procesados para mostrar:", listaCursos)
+        setCursosAsignados(listaCursos)
+
+      } else {
+        // SI ES DIRECTIVO O ADMIN: Traer todos los cursos de su escuela
+        const { data: todosLosCursos } = await supabase
+          .from('courses')
+          .select('id, name, section, shift')
+          .eq('school_id', profile?.school_id)
+          .order('name')
+        
+        setCursosAsignados(todosLosCursos || [])
+      }
+    } catch (error) {
+      console.error("Crash fetchInitialData:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Cargar alumnos cuando se selecciona un curso para mensaje individual
-  useEffect(() => {
-    if (selectedCurso && targetType === 'alumno-especifico') {
-      const fetchAlumnos = async () => {
-        const { data } = await supabase
-          .from('students')
-          .select('id, full_name')
-          .eq('course_id', selectedCurso)
-          .order('full_name')
-        setAlumnosDelCurso(data || [])
-      }
-      fetchAlumnos()
-    }
-  }, [selectedCurso, targetType])
+
+  if (loading) return <div className="p-20 text-center animate-pulse text-slate-400 font-bold">PREPARANDO CANAL DE COMUNICACIÓN...</div>
+
+  const turnos = ['Mañana', 'Tarde', 'Noche']
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     setSending(true)
 
     const payload = {
-      school_id: userProfile.school_id,
-      sender_id: userProfile.id,
+      school_id: userProfile?.school_id, // Usamos ? por seguridad
+      sender_id: userProfile?.id,
       title,
       content,
       target_type: targetType,
@@ -83,10 +113,6 @@ export default function NuevoComunicado() {
     }
     setSending(false)
   }
-
-  if (loading) return <div className="p-20 text-center animate-pulse text-slate-400 font-bold">PREPARANDO CANAL DE COMUNICACIÓN...</div>
-
-  const turnos = ['Mañana', 'Tarde', 'Noche']
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
