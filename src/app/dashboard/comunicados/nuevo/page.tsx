@@ -98,8 +98,10 @@ export default function NuevoComunicado() {
   }, [selectedCurso, targetType, supabase]);
 
   // 3. ENVÍO DE FORMULARIO
-  const handleSend = async (e: React.FormEvent) => {
+const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!selectedCurso) return toast.error("Seleccioná un curso")
+    
     setSending(true)
 
     const payload = {
@@ -111,17 +113,35 @@ export default function NuevoComunicado() {
       target_id: targetType === 'curso' ? selectedCurso : selectedAlumno,
       require_confirmation: confirm
     }
+    
+    try {
+      const { data: newComm, error } = await supabase
+        .from('communications')
+        .insert(payload)
+        .select()
+        .single()
 
-    const { error } = await supabase.from('communications').insert(payload)
+      if (error) throw error
 
-    if (error) {
-      toast.error("Error al enviar: " + error.message)
-    } else {
-      toast.success("Comunicado enviado con éxito")
+      // Llamar a la API de notificaciones (no bloquea el flujo principal)
+      fetch('/api/comunicados/notificar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ communicationId: newComm.id })
+      })
+
+      toast.success("Comunicado publicado y notificando a familias...")
       router.push('/dashboard/comunicados')
+      router.refresh()
+      
+    } catch (err: any) {
+      toast.error("Error: " + err.message)
+    } finally {
+      setSending(false)
     }
-    setSending(false)
   }
+
+  
 
   if (loading) return <div className="p-20 text-center animate-pulse text-slate-400 font-bold">PREPARANDO CANAL DE COMUNICACIÓN...</div>
 
