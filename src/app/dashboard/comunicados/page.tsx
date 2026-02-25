@@ -11,7 +11,7 @@ export default function ComunicadosPage() {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
@@ -25,17 +25,23 @@ export default function ComunicadosPage() {
 
         if (!profData) return
 
-        // 1. CARGAR COMUNICADOS GENERALES (Para todos)
-        const { data: comms } = await supabase
+        // --- INICIO DE LA CORRECCIÓN ---
+        // 1. CARGAR COMUNICADOS (Usando la relación con profiles para el nombre)
+        const { data: comms, error: errComms } = await supabase
           .from('communications')
-          .select(`*, profiles(full_name)`)
-          .eq('school_id', profData.school_id)
-          .order('created_at', { ascending: false })
-        setComunicados(comms || [])
+          .select(`
+            *,
+            profiles (full_name)
+          `)
+          .eq('school_id', profData.school_id) 
+          .order('created_at', { ascending: false });
+
+        if (errComms) console.error("❌ Error cargando comunicados:", errComms);
+        setComunicados(comms || []);
+        // --- FIN DE LA CORRECCIÓN ---
 
         // 2. LÓGICA ESPECÍFICA PARA PRECEPTOR: Cargar Notas de Padres
         if (profData.role?.toLowerCase() === 'preceptor') {
-          // Buscamos los cursos que tiene asignados
           const { data: asignaciones } = await supabase
             .from('preceptor_courses')
             .select('course_id')
@@ -44,13 +50,17 @@ export default function ComunicadosPage() {
           const idsCursos = asignaciones?.map(a => a.course_id) || []
 
           if (idsCursos.length > 0) {
-            // Buscamos notas de alumnos que pertenezcan a esos cursos
+            // Buscamos notas filtrando por los cursos asignados
             const { data: notas } = await supabase
               .from('parent_requests')
               .select(`
                 *,
                 profiles:parent_id (full_name),
-                students:student_id (full_name, course_id, courses(name, section))
+                students:student_id (
+                  full_name, 
+                  course_id, 
+                  courses(name, section)
+                )
               `)
               .in('students.course_id', idsCursos)
               .order('created_at', { ascending: false })
@@ -59,13 +69,14 @@ export default function ComunicadosPage() {
           }
         }
       } catch (error) {
-        console.error(error)
+        console.error("Crash fetchData:", error)
       } finally {
         setLoading(false)
       }
     }
     fetchData()
-  }, [])
+  }, [supabase]) // Añadimos supabase como dependencia por buena práctica
+
 
   const handleUpdateStatus = async (notaId: string, nuevoEstado: string) => {
     const { error } = await supabase
