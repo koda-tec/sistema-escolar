@@ -146,7 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/cursos" className={getLinkStyle('/dashboard/admin/cursos')}><span>🏫</span> Gestión Cursos</Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/personal" className={getLinkStyle('/dashboard/admin/personal')}><span>👨‍🏫</span> Gestión Personal</Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/estadisticas" className={getLinkStyle('/dashboard/admin/estadisticas')}><span>📊</span> Estadísticas</Link>
-                <Link href="/dashboard/admin/alumnos/promocion"><span>🚀</span> Promoción Ciclo</Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos/promocion" className={getLinkStyle('/dashboard/admin/alumnos/promocion')}><span>🚀</span> Promoción Ciclo</Link>
               </>
             )}
 
@@ -157,7 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/asistencia" className={getLinkStyle('/dashboard/asistencia')}><span>📝</span> Tomar Asistencia</Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos" className={getLinkStyle('/dashboard/admin/alumnos')}><span>👥</span> Gestión Alumnos</Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/preceptor/libretas" className={getLinkStyle('/dashboard/preceptor/libretas')}><span>📄</span> Carga de Libretas</Link>
-                <Link href="/dashboard/admin/alumnos/promocion"><span>🚀</span> Promoción Ciclo</Link>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin/alumnos/promocion" className={getLinkStyle('/dashboard/admin/alumnos/promocion')}><span>🚀</span> Promoción Ciclo</Link>
               </>
             )}
 
