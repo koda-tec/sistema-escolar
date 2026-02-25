@@ -24,26 +24,44 @@ export default function SolicitudPadrePage() {
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  e.preventDefault()
+  setLoading(true)
+
+  try {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).single()
 
-    const { error } = await supabase.from('parent_requests').insert({
-      parent_id: user?.id,
-      student_id: selectedHijo,
-      school_id: profile?.school_id,
-      type: tipo,
-      note: nota
+    // 1. Guardar la solicitud en la DB
+    const { data: newRequest, error } = await supabase
+      .from('parent_requests')
+      .insert({
+        parent_id: user?.id,
+        student_id: selectedHijo,
+        school_id: profile?.school_id,
+        type: tipo,
+        note: nota
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    // 2. Notificar al preceptor por Email (Llamada a nuestra nueva API)
+    await fetch('/api/solicitudes/notificar-preceptor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: newRequest.id })
     })
 
-    if (error) toast.error("Error al enviar")
-    else {
-      toast.success("Enviado al preceptor")
-      router.push('/dashboard/comunicados')
-    }
+    toast.success("Tu nota ha sido enviada y el preceptor ha sido notificado por email.")
+    router.push('/dashboard/comunicados')
+    
+  } catch (error: any) {
+    toast.error("Error al enviar la solicitud")
+  } finally {
     setLoading(false)
   }
+}
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
