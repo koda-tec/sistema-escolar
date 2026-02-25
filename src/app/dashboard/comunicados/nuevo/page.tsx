@@ -121,87 +121,78 @@ export default function NuevoComunicado() {
         {/* SECCIÓN 1: DESTINATARIOS */}
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-50 pb-4 text-left">
-             <span className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xs">1</span>
-             <h3 className="font-bold text-slate-900 uppercase text-sm tracking-widest">¿A quién va dirigido?</h3>
+            <span className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-blue-200">1</span>
+            <h3 className="font-black text-slate-900 uppercase text-xs tracking-[0.2em]">Alcance del Mensaje</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
             {/* OPCIÓN: TODA LA ESCUELA (Solo Directivos/Admin) */}
             {(userProfile?.role === 'directivo' || userProfile?.role === 'admin_koda') && (
               <button 
                 type="button"
                 onClick={() => { setTargetType('toda-la-escuela'); setSelectedCurso('') }}
-                className={`p-4 rounded-2xl border-2 transition-all text-left ${targetType === 'toda-la-escuela' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                className={`relative overflow-hidden p-5 rounded-2rem border-2 transition-all text-left group ${
+                  targetType === 'toda-la-escuela' 
+                  ? 'border-blue-600 bg-blue-600 text-white shadow-xl shadow-blue-200 scale-[1.02]' 
+                  : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-blue-200'
+                }`}
               >
-                <p className={`font-black text-[10px] uppercase ${targetType === 'toda-la-escuela' ? 'text-blue-600' : ''}`}>🌎 Toda la Escuela</p>
-                <p className="text-[10px] opacity-70">Aviso general institucional</p>
+                <div className="flex flex-col h-full justify-between gap-4">
+                  <span className={`text-2xl ${targetType === 'toda-la-escuela' ? 'opacity-100' : 'grayscale'}`}>🌎</span>
+                  <div>
+                    <p className="font-black text-[11px] uppercase tracking-wider">Toda la Escuela</p>
+                    <p className={`text-[10px] leading-tight mt-1 ${targetType === 'toda-la-escuela' ? 'text-blue-100' : 'text-slate-400'}`}>
+                      Comunicado general masivo.
+                    </p>
+                  </div>
+                </div>
               </button>
             )}
 
+            {/* OPCIÓN: CURSO COMPLETO */}
             <button 
               type="button"
               onClick={() => { setTargetType('curso'); setSelectedAlumno('') }}
-              className={`p-4 rounded-2xl border-2 transition-all text-left ${targetType === 'curso' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+              className={`relative overflow-hidden p-5 rounded-2rem border-2 transition-all text-left group ${
+                targetType === 'curso' 
+                ? 'border-blue-600 bg-blue-600 text-white shadow-xl shadow-blue-200 scale-[1.02]' 
+                : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-blue-200'
+              }`}
             >
-              <p className={`font-black text-[10px] uppercase ${targetType === 'curso' ? 'text-blue-600' : ''}`}>🏫 Curso Completo</p>
-              <p className="text-[10px] opacity-70">A los padres de un aula</p>
+              <div className="flex flex-col h-full justify-between gap-4">
+                <span className={`text-2xl ${targetType === 'curso' ? 'opacity-100' : 'grayscale'}`}>🏫</span>
+                <div>
+                  <p className="font-black text-[11px] uppercase tracking-wider">Curso Completo</p>
+                  <p className={`text-[10px] leading-tight mt-1 ${targetType === 'curso' ? 'text-blue-100' : 'text-slate-400'}`}>
+                    A todos los padres de un aula.
+                  </p>
+                </div>
+              </div>
             </button>
 
+            {/* OPCIÓN: ALUMNO INDIVIDUAL */}
             <button 
               type="button"
               onClick={() => setTargetType('alumno-especifico')}
-              className={`p-4 rounded-2xl border-2 transition-all text-left ${targetType === 'alumno-especifico' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+              className={`relative overflow-hidden p-5 rounded-2rem border-2 transition-all text-left group ${
+                targetType === 'alumno-especifico' 
+                ? 'border-blue-600 bg-blue-600 text-white shadow-xl shadow-blue-200 scale-[1.02]' 
+                : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-blue-200'
+              }`}
             >
-              <p className={`font-black text-[10px] uppercase ${targetType === 'alumno-especifico' ? 'text-blue-600' : ''}`}>👤 Alumno Individual</p>
-              <p className="text-[10px] opacity-70">Mensaje privado por familia</p>
+              <div className="flex flex-col h-full justify-between gap-4">
+                <span className={`text-2xl ${targetType === 'alumno-especifico' ? 'opacity-100' : 'grayscale'}`}>👤</span>
+                <div>
+                  <p className="font-black text-[11px] uppercase tracking-wider">Alumno Individual</p>
+                  <p className={`text-[10px] leading-tight mt-1 ${targetType === 'alumno-especifico' ? 'text-blue-100' : 'text-slate-400'}`}>
+                    Mensaje privado para un tutor.
+                  </p>
+                </div>
+              </div>
             </button>
           </div>
-
-          {/* Selector de Cursos (Solo si no es para toda la escuela) */}
-          {targetType !== 'toda-la-escuela' && (
-            <div className="space-y-4 text-left animate-in slide-in-from-top-2 duration-300">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest text-left">Seleccionar Curso</label>
-              <div className="grid grid-cols-1 gap-4 text-left">
-                {turnos.map(turno => {
-                  const cursos = cursosAsignados.filter(c => c.shift === turno)
-                  if (cursos.length === 0) return null
-                  return (
-                    <div key={turno} className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-left">
-                      <span className="w-full text-[9px] font-black text-blue-500 uppercase mb-1 ml-1 text-left">{turno}</span>
-                      {cursos.map(c => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelectedCurso(c.id)}
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border ${selectedCurso === c.id ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}
-                        >
-                          {c.name} "{c.section}"
-                        </button>
-                      ))}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Selector de Alumno Individual */}
-          {targetType === 'alumno-especifico' && selectedCurso && (
-            <div className="animate-in slide-in-from-top-2 duration-300 text-left">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Seleccionar Alumno</label>
-              <select 
-                value={selectedAlumno} 
-                onChange={e => setSelectedAlumno(e.target.value)}
-                className="w-full mt-1 p-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-bold border-none"
-                required
-              >
-                <option value="">-- Buscar en la lista --</option>
-                {alumnosDelCurso.map(a => <option key={a.id} value={a.id}>{a.full_name}</option>)}
-              </select>
-            </div>
-          )}
         </div>
-
         {/* SECCIÓN 2: REDACCIÓN */}
         <div className="space-y-6 pt-6 border-t border-slate-100 text-left">
           <div className="flex items-center gap-3 text-left">
