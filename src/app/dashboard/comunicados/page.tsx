@@ -101,30 +101,35 @@ export default function ComunicadosPage() {
 
   // FUNCIÓN: ENVIAR RESPUESTA POR ESCRITO
   const handleSendResponse = async (notaId: string) => {
-    const respuesta = respuestas[notaId]
-    if (!respuesta) return toast.error("Escribí un mensaje primero")
+  const respuesta = respuestas[notaId];
+  if (!respuesta) return toast.error("Escribí un mensaje");
 
-    const { error } = await supabase
-      .from('parent_requests')
-      .update({ 
-        response_text: respuesta, 
-        status: 'respondido',
-        responded_at: new Date().toISOString()
-      })
-      .eq('id', notaId)
+  setLoading(true);
+  
+  // 1. PRIMERO ACTUALIZAMOS LA DB
+  const { error } = await supabase
+    .from('parent_requests')
+    .update({ 
+      response_text: respuesta,
+      status: 'respondido',
+      responded_at: new Date().toISOString()
+    })
+    .eq('id', notaId);
 
-    if (!error) {
-      // Notificar al padre vía API
-      fetch('/api/solicitudes/notificar-padre', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: notaId })
-      })
-      toast.success("Respuesta enviada")
-      setRespuestas(prev => { const n = {...prev}; delete n[notaId]; return n; })
-      fetchData()
-    }
+  if (!error) {
+    // 2. RECIÉN AHORA LLAMAMOS A LA API DE NOTIFICACIÓN
+    await fetch('/api/solicitudes/notificar-padre', {
+      method: 'POST',
+      body: JSON.stringify({ requestId: notaId })
+    });
+
+    toast.success("Respuesta enviada");
+    window.location.reload(); 
+  } else {
+    toast.error("Error al guardar la respuesta");
   }
+  setLoading(false);
+};
 
   if (loading) return (
     <div className="p-20 text-center animate-pulse flex flex-col items-center gap-4">

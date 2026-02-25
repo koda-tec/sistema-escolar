@@ -10,15 +10,19 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
   const { data: hijos } = await supabase.from('students').select('id, full_name').eq('parent_id', user?.id);
   const idsHijos = hijos?.map(h => h.id) || [];
 
-  // 2. Consultas en paralelo
+  // 2. Consultas en paralelo (MODIFICADO: misNotas ahora incluye students)
   const [commCount, libCount, asistHoy, misNotas] = await Promise.all([
     supabase.from('communications').select('*', { count: 'exact', head: true }).eq('school_id', profile?.school_id),
     supabase.from('libretas').select('*', { count: 'exact', head: true }).in('student_id', idsHijos),
     supabase.from('attendance').select('status').in('student_id', idsHijos).eq('date', hoy),
-    supabase.from('parent_requests').select('*').eq('parent_id', user?.id).order('created_at', { ascending: false }).limit(3)
+    supabase.from('parent_requests')
+      .select('*, students(full_name)') 
+      .eq('parent_id', user?.id)
+      .order('created_at', { ascending: false })
+      .limit(3)
   ]);
 
-  // 3. Lógica de asistencia
+  // 3. Lógica de estado de asistencia
   let estadoAsistencia = "--";
   let colorAsistencia = "green";
   if (idsHijos.length > 0) {
@@ -87,16 +91,19 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
           </div>
         </div>
 
-        {/* MODIFICACIÓN: MIS NOTAS ENVIADAS CON RESPUESTA */}
+        {/* MODIFICACIÓN: NOTAS CON DISEÑO DE RESPUESTA AZUL */}
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm text-left">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Mis Notas a Preceptoría</h3>
           <div className="space-y-4">
             {misNotas.data?.map((nota: any) => (
-              <div key={nota.id} className="bg-slate-50/50 p-4 rounded-1.5rem border border-slate-100 space-y-2">
+              <div key={nota.id} className="bg-slate-50/50 p-5 rounded-2rem border border-slate-100 space-y-2 relative overflow-hidden">
                 <div className="flex justify-between items-start">
-                  <span className="text-[9px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md tracking-tighter">
-                    {nota.type}
-                  </span>
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md tracking-tighter">
+                      {nota.type}
+                    </span>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase">Para: {nota.students?.full_name}</p>
+                  </div>
                   <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
                     nota.status === 'pendiente' ? 'bg-red-50 text-red-600' :
                     nota.status === 'leido' ? 'bg-amber-100 text-amber-600' :
@@ -108,15 +115,20 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
                 
                 <p className="text-xs text-slate-500 italic">" {nota.note} "</p>
 
-                {/* RESPUESTA DEL PRECEPTOR INTEGRADA */}
-                {nota.response_text && (
-                  <div className="mt-2 p-3 bg-white rounded-xl border-l-4 border-blue-500 shadow-sm animate-in slide-in-from-left-2">
-                    <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Respuesta de Preceptoría:</p>
-                    <p className="text-xs text-slate-800 font-bold leading-tight">{nota.response_text}</p>
+                {/* NUEVO: RESPUESTA DEL PRECEPTOR EN AZUL */}
+                {nota.status === 'respondido' && nota.response_text && (
+                  <div className="mt-3 p-4 bg-blue-600 rounded-2xl text-white shadow-lg animate-in zoom-in duration-300">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs">💬</span>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Respuesta de Preceptoría</p>
+                    </div>
+                    <p className="text-sm font-bold leading-tight italic">
+                      "{nota.response_text}"
+                    </p>
                   </div>
                 )}
                 
-                <p className="text-[8px] text-slate-300 font-bold uppercase tracking-widest pt-1">
+                <p className="text-[8px] text-slate-300 font-bold uppercase tracking-widest pt-2">
                   {new Date(nota.created_at).toLocaleDateString('es-AR')}
                 </p>
               </div>
