@@ -71,7 +71,7 @@ export default async function DetalleHijoPage({
                     PDF
                   </div>
                   <div>
-                    <p className="font-bold text-slate-900">{libreta.trimestre}° Trimestre - {libreta.anio}</p>
+                    <p className="font-bold text-slate-900">{libreta.trimestre}° {libreta.tipo_periodo || 'Trimestre'} - {libreta.anio}</p>
                     <p className="text-[10px] text-slate-400 font-bold uppercase">
                       Subido el {new Date(libreta.created_at).toLocaleDateString()}
                     </p>

@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast' // Cambiado a react-hot-toast para consistencia
 
 export default function LibretasPage() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [cursos, setCursos] = useState<any[]>([])
   const [alumnos, setAlumnos] = useState<any[]>([])
   const [libretas, setLibretas] = useState<any[]>([])
@@ -12,33 +12,64 @@ export default function LibretasPage() {
   // Form state
   const [selectedCurso, setSelectedCurso] = useState('')
   const [selectedAlumno, setSelectedAlumno] = useState('')
-  const [trimestre, setTrimestre] = useState('1')
+  const [tipoPeriodo, setTipoPeriodo] = useState('Trimestre')
+  const [numeroPeriodo, setNumeroPeriodo] = useState('1')
   const [anio, setAnio] = useState(new Date().getFullYear().toString())
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   
   const supabase = createClient()
 
-  // Cargar cursos al inicio
+  // 1. Cargar cursos segmentados por rol y asignación
   useEffect(() => {
     const fetchCursos = async () => {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('id, name, school_id')
-        .order('name')
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
 
-      if (error) {
+        // Obtenemos el perfil para saber el rol y la escuela
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, role, school_id')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (!profile) return
+
+        const rol = profile.role?.toLowerCase().trim()
+
+        if (rol === 'preceptor') {
+          // SI ES PRECEPTOR: Traer solo los cursos asignados en 'preceptor_courses'
+          const { data: asignaciones, error } = await supabase
+            .from('preceptor_courses')
+            .select('courses(id, name, section, shift)')
+            .eq('preceptor_id', user.id)
+          
+          if (error) throw error
+          setCursos(asignaciones?.map((a: any) => a.courses).filter(Boolean) || [])
+        } else {
+          // SI ES DIRECTIVO/ADMIN: Traer todos los cursos de la escuela
+          const { data: todos, error } = await supabase
+            .from('courses')
+            .select('id, name, section, shift')
+            .eq('school_id', profile.school_id)
+            .order('name')
+          
+          if (error) throw error
+          setCursos(todos || [])
+        }
+      } catch (error: any) {
         console.error('Error cargando cursos:', error)
-        toast.error('Error al cargar cursos')
-      } else {
-        setCursos(data || [])
+        toast.error('No se pudieron cargar los cursos')
+      } finally {
+        setLoading(false)
       }
     }
 
     fetchCursos()
-  }, [])
+  }, [supabase])
 
-  // Cargar alumnos cuando se selecciona un curso (Corregido para la estructura KodaEd)
+  // 2. Cargar alumnos cuando se selecciona un curso
   useEffect(() => {
     const fetchAlumnos = async () => {
       if (!selectedCurso) {
@@ -46,27 +77,23 @@ export default function LibretasPage() {
         return
       }
 
-      // Traemos los alumnos directamente de la tabla 'students' 
-      // filtrando por el ID del curso seleccionado
-      const { data: studentsData, error } = await supabase
+      const { data, error } = await supabase
         .from('students')
-        .select('id, full_name, dni')
+        .select('id, full_name')
         .eq('course_id', selectedCurso)
         .order('full_name', { ascending: true })
 
       if (error) {
         console.error('Error cargando alumnos:', error)
-        toast.error('Error al cargar la lista de alumnos')
       } else {
-        // Ahora 'alumnos' contendrá la lista de objetos con id y full_name
-        setAlumnos(studentsData || [])
+        setAlumnos(data || [])
       }
     }
 
     fetchAlumnos()
   }, [selectedCurso, supabase])
 
-  // Cargar libretas del curso seleccionado
+  // 3. Cargar historial de libretas del curso seleccionado
   useEffect(() => {
     const fetchLibretas = async () => {
       if (!selectedCurso) {
@@ -78,8 +105,7 @@ export default function LibretasPage() {
         .from('libretas')
         .select(`
           *,
-          student:student_id(full_name),
-          course:course_id(name)
+          student:student_id(full_name)
         `)
         .eq('course_id', selectedCurso)
         .order('created_at', { ascending: false })
@@ -94,13 +120,13 @@ export default function LibretasPage() {
     fetchLibretas()
   }, [selectedCurso, supabase])
 
-  // ... (dentro de tu componente LibretasPage, reemplaza la función handleUpload)
-
+  // 4. Lógica de Subida y Notificación
+    // 4. Lógica de Subida y Notificación
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validaciones iniciales
-    if (!selectedCurso || !selectedAlumno || !file || !trimestre || !anio) {
+    // CORRECCIÓN: Usamos numeroPeriodo en lugar de trimestre
+    if (!selectedCurso || !selectedAlumno || !file || !numeroPeriodo || !anio) {
       toast.error('Por favor, completá todos los campos')
       return
     }
@@ -117,10 +143,10 @@ export default function LibretasPage() {
       formData.append('file', file)
       formData.append('courseId', selectedCurso)
       formData.append('studentId', selectedAlumno)
-      formData.append('trimestre', trimestre)
+      formData.append('trimestre', numeroPeriodo) // Enviamos numeroPeriodo al backend
       formData.append('anio', anio)
 
-      // 1. Subida del archivo y registro en DB
+      // A. Subida del archivo y registro en DB
       const response = await fetch('/api/libretas/upload', {
         method: 'POST',
         body: formData
@@ -131,51 +157,37 @@ export default function LibretasPage() {
       if (result.error) {
         toast.error(result.error)
       } else {
-        // --- INICIO LÓGICA DE NOTIFICACIÓN ---
-        // Si la subida fue exitosa, disparamos el mail al padre
+        // B. Notificación por Email al padre
         try {
           await fetch('/api/libretas/notificar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               studentId: selectedAlumno, 
-              trimestre: trimestre, 
-              anio: anio 
+              trimestre: numeroPeriodo, // Usamos la variable correcta
+              anio 
             })
           });
-          toast.success('¡Libreta cargada y tutor notificado por email!');
+          toast.success('¡Libreta cargada y tutor notificado!');
         } catch (notifError) {
-          console.error("Error al notificar:", notifError);
-          toast.success('Libreta cargada (pero hubo un error al enviar el mail)');
+          toast.success('Libreta cargada (error en el envío del mail)');
         }
-        // --- FIN LÓGICA DE NOTIFICACIÓN ---
         
-        // Limpiar formulario
+        // Limpiar campos y refrescar
         setFile(null)
         setSelectedAlumno('')
-        
-        // Recargar la lista de libretas para mostrar la nueva
-        const { data } = await supabase
-          .from('libretas')
-          .select(`
-            *,
-            student:student_id(full_name),
-            course:course_id(name)
-          `)
-          .eq('course_id', selectedCurso)
-          .order('created_at', { ascending: false })
-        
-        setLibretas(data || [])
+        // En lugar de reload, podrías llamar a la función que carga las libretas
+        // pero reload funciona para una solución rápida
+        window.location.reload() 
       }
     } catch (error) {
-      console.error('Error general:', error)
       toast.error('Error al procesar la libreta')
     } finally {
       setUploading(false)
     }
   }
 
-  
+
   const handleDelete = async (libretaId: string) => {
     if (!confirm('¿Estás seguro de eliminar esta libreta?')) return
 
@@ -185,218 +197,128 @@ export default function LibretasPage() {
       .eq('id', libretaId)
 
     if (error) {
-      toast.error('Error al eliminar la libreta')
+      toast.error('Error al eliminar')
     } else {
       toast.success('Libreta eliminada')
       setLibretas(libretas.filter(l => l.id !== libretaId))
     }
   }
 
-  const handleDownload = (url: string, nombre: string) => {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = nombre
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+  if (loading) return <div className="p-20 text-center animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">Preparando gestión de documentos...</div>
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Gestión de Libretas</h1>
-          <p className="text-slate-500 mt-2">Subí las libretas en PDF de los alumnos</p>
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20 text-left">
+      <header>
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight italic uppercase">Gestión de Libretas</h1>
+        <p className="text-slate-500 font-medium italic">Digitalizá y notificá las calificaciones oficiales.</p>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* LADO IZQUIERDO: FORMULARIO */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight border-b border-slate-50 pb-4">Subir Reporte</h2>
+          <form onSubmit={handleUpload} className="space-y-5">
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Curso Asignado</label>
+              <select
+                value={selectedCurso}
+                onChange={(e) => { setSelectedCurso(e.target.value); setSelectedAlumno('') }}
+                className="w-full mt-1 p-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-bold border-none"
+                required
+              >
+                <option value="">Seleccionar curso...</option>
+                {cursos.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} "{c.section}" - {c.shift}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Alumno</label>
+              <select
+                value={selectedAlumno}
+                onChange={(e) => setSelectedAlumno(e.target.value)}
+                disabled={!selectedCurso || alumnos.length === 0}
+                className="w-full mt-1 p-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-bold border-none disabled:opacity-50"
+                required
+              >
+                <option value="">-- Buscar en el aula --</option>
+                {alumnos.map(a => <option key={a.id} value={a.id}>{a.full_name}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Tipo de Periodo</label>
+                <select 
+                  value={tipoPeriodo} 
+                  onChange={(e) => {
+                    setTipoPeriodo(e.target.value);
+                    setNumeroPeriodo('1'); // Resetear al cambiar tipo
+                  }} 
+                  className="w-full mt-1 p-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-bold border-none"
+                >
+                  <option value="Trimestre">Trimestre</option>
+                  <option value="Cuatrimestre">Cuatrimestre</option>
+                  <option value="Informe">Informe Especial</option>
+                  <option value="Final">Examen Final</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Número</label>
+                <select 
+                  value={numeroPeriodo} 
+                  onChange={(e) => setNumeroPeriodo(e.target.value)} 
+                  className="w-full mt-1 p-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-bold border-none"
+                >
+                  <option value="1">1° {tipoPeriodo}</option>
+                  <option value="2">2° {tipoPeriodo}</option>
+                  {tipoPeriodo === 'Trimestre' && <option value="3">3° Trimestre</option>}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest text-left">Archivo PDF</label>
+              <input 
+                type="file" 
+                accept=".pdf" 
+                onChange={(e) => setFile(e.target.files?.[0] || null)} 
+                className="w-full mt-1 p-3 bg-slate-50 rounded-2xl text-[10px] font-black text-slate-500 uppercase" 
+                required 
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={uploading || !selectedCurso || !selectedAlumno || !file}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-100 transition-all active:scale-95 disabled:opacity-30"
+            >
+              {uploading ? 'PROCESANDO...' : '🚀 PUBLICAR Y NOTIFICAR'}
+            </button>
+          </form>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Formulario para subir libreta */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm border">
-            <h2 className="text-xl font-bold text-slate-900 mb-6">Subir Libreta</h2>
-
-            <form onSubmit={handleUpload} className="space-y-5">
-              {/* Seleccionar Curso */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Curso *
-                </label>
-                <select
-                  value={selectedCurso}
-                  onChange={(e) => {
-                    setSelectedCurso(e.target.value)
-                    setSelectedAlumno('')
-                  }}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-900"
-                  required
-                >
-                  <option value="">Seleccionar curso...</option>
-                  {cursos.map(curso => (
-                    <option key={curso.id} value={curso.id}>
-                      {curso.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Seleccionar Alumno */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Alumno *
-                </label>
-                <select
-                  value={selectedAlumno}
-                  onChange={(e) => setSelectedAlumno(e.target.value)}
-                  disabled={!selectedCurso || alumnos.length === 0}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-900 disabled:bg-slate-100 disabled:text-slate-400"
-                  required
-                >
-                  <option value="">Seleccionar alumno...</option>
-                  {alumnos.map(alumno => (
-                    <option key={alumno.id} value={alumno.id}>
-                      {alumno.full_name}
-                    </option>
-                  ))}
-                </select>
-                {selectedCurso && alumnos.length === 0 && (
-                  <p className="text-sm text-slate-400 mt-1">
-                    No hay alumnos en este curso
+        {/* LADO DERECHO: HISTORIAL */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight border-b border-slate-50 pb-4 text-left">Recientes</h2>
+          <div className="space-y-3 overflow-y-auto max-h-500px custom-scrollbar">
+            {libretas.map(l => (
+              <div key={l.id} className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between border border-slate-100 hover:border-blue-300 transition-all">
+                <div className="text-left">
+                  <p className="font-bold text-slate-900 text-sm notranslate">{l.student?.full_name}</p>
+                  <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">
+                    {l.trimestre}° Trimestre - {l.anio}
                   </p>
-                )}
-              </div>
-
-              {/* Trimestre y Año */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">
-                    Trimestre *
-                  </label>
-                  <select
-                    value={trimestre}
-                    onChange={(e) => setTrimestre(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-900"
-                    required
-                  >
-                    <option value="1">1° Trimestre</option>
-                    <option value="2">2° Trimestre</option>
-                    <option value="3">3° Trimestre</option>
-                  </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">
-                    Año *
-                  </label>
-                  <select
-                    value={anio}
-                    onChange={(e) => setAnio(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-900"
-                    required
-                  >
-                    {[2023, 2024, 2025, 2026].map(año => (
-                      <option key={año} value={año.toString()}>
-                        {año}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex gap-2">
+                   <a href={l.archivo_url} target="_blank" className="bg-white p-2 rounded-xl border border-slate-200 text-blue-600 hover:bg-blue-600 hover:text-white transition-all">👁️</a>
+                   <button onClick={() => handleDelete(l.id)} className="bg-white p-2 rounded-xl border border-slate-200 text-red-600 hover:bg-red-50 transition-all">🗑️</button>
                 </div>
               </div>
-
-              {/* Archivo PDF */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Archivo PDF *
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all"
-                  required
-                />
-                {file && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    Archivo seleccionado: {file.name}
-                  </p>
-                )}
-              </div>
-
-              {/* Botón */}
-              <button
-                type="submit"
-                disabled={uploading || !selectedCurso || !selectedAlumno || !file}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {uploading ? 'Subiendo...' : 'Subir Libreta'}
-              </button>
-            </form>
-          </div>
-
-          {/* Lista de libretas */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm border">
-            <h2 className="text-xl font-bold text-slate-900 mb-6">
-              Libretas Cargadas
-              {selectedCurso && (
-                <span className="text-sm font-normal text-slate-500 ml-2">
-                  ({libretas.length})
-                </span>
-              )}
-            </h2>
-
-            {!selectedCurso ? (
-              <div className="text-center py-12 text-slate-400">
-                <p>Seleccioná un curso para ver las libretas</p>
-              </div>
-            ) : libretas.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">
-                <p>No hay libretas cargadas para este curso</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-500px overflow-y-auto">
-                {libretas.map((libreta) => (
-                  <div 
-                    key={libreta.id}
-                    className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
-                        PDF
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {libreta.student?.full_name || 'Alumno'}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {libreta.trimestre}° Trimestre {libreta.anio} • {libreta.archivo_nombre}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleDownload(libreta.archivo_url, libreta.archivo_nombre)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Descargar"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(libreta.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Eliminar"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            ))}
+            {libretas.length === 0 && <p className="text-center text-slate-300 italic text-sm py-10">Selecciona un curso para ver el historial.</p>}
           </div>
         </div>
       </div>

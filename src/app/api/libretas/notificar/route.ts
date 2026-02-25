@@ -2,15 +2,19 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { Resend } from 'resend'
 
+// Eliminamos la línea 4 que causaba el error porque estaba fuera de la función
 const resend = new Resend(process.env.RESEND_API_KEY)
+
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
+    // El objeto 'request' solo es accesible AQUÍ adentro
     const { studentId, trimestre, anio } = await request.json()
     const supabase = getSupabaseAdmin()
 
     // 1. Buscamos los datos del alumno y el email del padre
+    // Importante: profiles:parent_id asume que en la tabla students la FK se llama parent_id
     const { data: alumno, error: alumnoError } = await supabase
       .from('students')
       .select(`
@@ -19,22 +23,25 @@ export async function POST(request: Request) {
           email,
           full_name
         ),
-        schools (name)
+        schools:school_id (name)
       `)
       .eq('id', studentId)
       .single()
 
-    if (alumnoError || !alumno) throw new Error("No se encontró el alumno o el tutor")
-
+    if (alumnoError || !alumno) {
+      console.error('Error buscando alumno:', alumnoError)
+      throw new Error("No se encontró el alumno o el tutor en la base de datos")
+    }
+        
     const emailPadre = (alumno as any).profiles?.email
     const nombrePadre = (alumno as any).profiles?.full_name
-    const nombreEscuela = (alumno as any).schools?.name
+    const nombreEscuela = (alumno as any).schools?.name || "Tu Institución"
 
     if (!emailPadre) {
       return NextResponse.json({ message: 'El alumno no tiene un tutor vinculado con email.' })
     }
 
-    // 2. Enviamos el mail informativo
+    // 2. Enviamos el mail informativo con Resend
     await resend.emails.send({
       from: 'KodaEd <reportes@kodatec.app>',
       to: [emailPadre],
@@ -52,15 +59,15 @@ export async function POST(request: Request) {
             
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 25px; margin: 25px 0; text-align: center;">
               <p style="margin: 0; color: #64748b; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;">Documento Disponible</p>
-              <p style="margin: 10px 0; font-size: 20px; font-weight: 800; color: #1e293b;">Libreta Digital - ${trimestre}° Trimestre</p>
+              <p style="margin: 10px 0; font-size: 20px; font-weight: 800; color: #1e293b;">Libreta Digital - ${trimestre}° Periodo</p>
               <p style="margin: 0; font-size: 14px; color: #2563eb; font-weight: bold;">Ciclo Lectivo ${anio}</p>
             </div>
 
-            <p style="font-size: 14px; color: #64748b;">Puede visualizar y descargar el archivo PDF ingresando a su panel de familia en la sección "Mis Hijos".</p>
+            <p style="font-size: 14px; color: #64748b;">Puede visualizar y descargar el archivo PDF ingresando a su panel de familia.</p>
 
             <div style="text-align: center; margin-top: 35px;">
               <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/hijos/${studentId}" 
-                 style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2);">
+                 style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">
                 Ver Libreta Ahora →
               </a>
             </div>
