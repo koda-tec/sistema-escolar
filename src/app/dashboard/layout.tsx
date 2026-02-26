@@ -219,7 +219,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* Botón Cambiar Contraseña */}
               <Link
                 href="/dashboard/perfil/cambiar-password"
-                className="w-full mb-3 inline-block bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 font-bold text-center uppercase transition"
+                className="w-full mb-2 inline-block bg-blue-600 hover:bg-blue-700 text-white               rounded-lg py-2 font-semibold text-sm text-center uppercase transition"
               >
                 Cambiar Contraseña
               </Link>
