@@ -6,8 +6,15 @@ export default async function TomarAsistenciaPage({ params }: { params: Promise<
   const { id } = await params
   const hoy = new Date().toISOString().split('T')[0]
 
-  // 1. Info del curso
-  const { data: course } = await supabase.from('courses').select('*').eq('id', id).single()
+  // 1. Info del curso e INSTITUCIÓN (Agregamos la relación con 'schools')
+  const { data: course } = await supabase
+    .from('courses')
+    .select('*, schools(name)')
+    .eq('id', id)
+    .single()
+
+  const schoolName = (course?.schools as any)?.name || "KodaEd"
+  const courseName = `${course?.name} "${course?.section}"`
 
   // 2. Alumnos
   const { data: students } = await supabase
@@ -16,7 +23,7 @@ export default async function TomarAsistenciaPage({ params }: { params: Promise<
     .eq('course_id', id)
     .order('full_name')
 
-  // 3. NUEVO: Buscar asistencia ya tomada hoy para este curso
+  // 3. Asistencia ya tomada hoy
   const studentIds = students?.map(s => s.id) || []
   const { data: asistenciaExistente } = await supabase
     .from('attendance')
@@ -28,23 +35,27 @@ export default async function TomarAsistenciaPage({ params }: { params: Promise<
     <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 uppercase italic">
-            {course?.name} "{course?.section}"
+          <nav className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">
+             Asistencia Diaria
+          </nav>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic leading-none">
+            {courseName}
           </h1>
-          <p className="text-slate-500 font-medium">Fecha: {new Date().toLocaleDateString('es-AR')}</p>
+          <p className="text-slate-500 font-bold mt-1 uppercase text-xs tracking-widest">{schoolName}</p>
         </div>
+        
         {asistenciaExistente && asistenciaExistente.length > 0 && (
-          <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-2xl text-xs font-black uppercase">
+          <div className="bg-amber-500 text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase shadow-lg shadow-amber-200 animate-in zoom-in">
             ⚠️ Editando lista de hoy
           </div>
         )}
       </header>
 
-      {/* Pasamos 'asistenciaExistente' al formulario */}
       <AttendanceForm 
         students={students || []} 
         courseId={id} 
-        courseName={`${course?.name} ${course?.section}`}
+        courseName={courseName}
+        schoolName={schoolName} // Pasamos el nombre real de la escuela
         initialAttendance={asistenciaExistente || []} 
       />
     </div>
