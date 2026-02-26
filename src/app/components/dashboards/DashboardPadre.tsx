@@ -10,19 +10,24 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
   const { data: hijos } = await supabase.from('students').select('id, full_name').eq('parent_id', user?.id);
   const idsHijos = hijos?.map(h => h.id) || [];
 
-  // 2. Consultas en paralelo
+  // 2. Consultas en paralelo (LIMPIO Y CORREGIDO)
   const [commCount, libCount, asistHoy, misNotas] = await Promise.all([
     supabase.from('communications').select('*', { count: 'exact', head: true }).eq('school_id', profile?.school_id),
     supabase.from('libretas').select('*', { count: 'exact', head: true }).in('student_id', idsHijos),
     supabase.from('attendance').select('status').in('student_id', idsHijos).eq('date', hoy),
     
-    // CORRECCIÓN: Traer explícitamente el status y response_text
+    // Aquí quitamos el ";" y la lógica extra
     supabase.from('parent_requests')
-      .select('id, type, note, status, response_text, created_at') 
+      .select('id, type, note, status, response_text, created_at')
       .eq('parent_id', user?.id)
       .order('created_at', { ascending: false })
-      .limit(3)
+      .limit(5) // SIN PUNTO Y COMA AQUÍ
   ]);
+
+  // Si querés debuguear, hacelo AQUÍ abajo, fuera del Promise.all
+  if (misNotas.error) {
+    console.error("Error cargando notas:", misNotas.error);
+  }
 
   // 3. Lógica de estado de asistencia
   let estadoAsistencia = "--";

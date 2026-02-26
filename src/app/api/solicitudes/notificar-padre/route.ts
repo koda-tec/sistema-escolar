@@ -7,33 +7,30 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    const { requestId } = await request.json()
+    // RECIBIMOS EL MENSAJE DIRECTAMENTE AQUÍ
+    const { requestId, responseText } = await request.json() 
     const supabase = getSupabaseAdmin()
 
-    // 1. Buscamos los datos incluyendo explícitamente la respuesta
-    const { data: nota, error: notaError } = await supabase
+    // Buscamos los nombres involucrados
+    const { data: nota, error } = await supabase
       .from('parent_requests')
       .select(`
-        id,
-        note,
-        response_text,
         profiles:parent_id(full_name, email),
         students:student_id(full_name, schools(name))
       `)
       .eq('id', requestId)
       .single()
 
-    if (notaError || !nota) throw new Error("No se encontró la solicitud")
+    if (error || !nota) throw new Error("No se encontró la solicitud")
 
-    const emailPadre = (nota as any).profiles?.email
-    const nombrePadre = (nota as any).profiles?.full_name
-    const respuestaTexto = nota.response_text || "Tu nota ha sido procesada." // Fallback si viene vacío
+    const emailPadre = (nota as any).profiles.email
+    const nombrePadre = (nota as any).profiles.full_name
+    
+    // USAMOS EL TEXTO QUE VIENE POR PARÁMETRO
+    const mensajeFinal = responseText || "Tu nota ha sido procesada correctamente."
 
-    if (!emailPadre) return NextResponse.json({ message: 'Sin email' })
-
-    // 2. Enviar Email
     await resend.emails.send({
-      from: 'KodaEd <notificaciones@kodatec.app>',
+      from: 'KodaEd <avisos@kodatec.app>',
       to: [emailPadre],
       subject: `✅ Respuesta de la Escuela`,
       html: `
@@ -43,11 +40,11 @@ export async function POST(request: Request) {
           </div>
           <div style="padding: 30px; color: #1e293b;">
             <p>Hola <strong>${nombrePadre}</strong>,</p>
-            <p>Has recibido una respuesta oficial a tu nota:</p>
-            <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; font-style: italic;">
-              "${respuestaTexto}"
+            <p>La escuela ha respondido a tu nota:</p>
+            <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; font-size: 16px;">
+              "${mensajeFinal}"
             </div>
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard" style="display: inline-block; background: #2563eb; color: white; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: bold;">Ver en la App</a>
+            <p>Podés ver el historial completo en la App.</p>
           </div>
         </div>
       `
