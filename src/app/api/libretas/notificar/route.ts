@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { Resend } from 'resend'
-
+// 1. CORRECCIÓN: Importar la función
+import { sendPushNotification } from '@/app/utils/push/sender'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,12 +13,13 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin()
 
     // 1. Buscamos los datos del alumno y el email del padre
-    // Importante: profiles:parent_id asume que en la tabla students la FK se llama parent_id
     const { data: alumno, error: alumnoError } = await supabase
       .from('students')
       .select(`
         full_name,
+        parent_id,
         profiles:parent_id (
+          id,
           email,
           full_name
         ),
@@ -31,6 +33,7 @@ export async function POST(request: Request) {
       throw new Error("No se encontró el alumno o el tutor en la base de datos")
     }
         
+    const parentId = (alumno as any).parent_id // ID necesario para la Push
     const emailPadre = (alumno as any).profiles?.email
     const nombrePadre = (alumno as any).profiles?.full_name
     const nombreEscuela = (alumno as any).schools?.name || "Tu Institución"
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
           
           <div style="padding: 40px; line-height: 1.6;">
             <p style="font-size: 18px;">Estimado/a <strong>${nombrePadre}</strong>,</p>
-            <p>Le informamos que la institución <strong>${nombreEscuela}</strong> ha cargado un nuevo reporte de calificaciones para su hijo/a.</p>
+            <p>Le informamos que la institución <strong>${nombreEscuela}</strong> ha cargado un nuevo reporte de calificaciones para su hijo/a <strong>${alumno.full_name}</strong>.</p>
             
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 25px; margin: 25px 0; text-align: center;">
               <p style="margin: 0; color: #64748b; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;">Documento Disponible</p>
@@ -78,7 +81,16 @@ export async function POST(request: Request) {
       `
     })
 
-    return NextResponse.json({ success: true, message: 'Padre notificado por email.' })
+    if (parentId) {
+      await sendPushNotification(
+        parentId, 
+        "📄 Nueva Libreta Disponible",
+        `Se ha cargado la libreta del ${trimestre}° periodo de ${alumno.full_name}.`,
+        `/dashboard/hijos/${studentId}`
+      ).catch(e => console.error("Error enviando Push libreta:", e));
+    }
+
+    return NextResponse.json({ success: true, message: 'Padre notificado por email y push.' })
 
   } catch (error: any) {
     console.error('Error notificador libretas:', error.message)
