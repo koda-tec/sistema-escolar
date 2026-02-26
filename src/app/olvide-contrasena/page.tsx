@@ -1,4 +1,7 @@
 'use client'
+
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -10,18 +13,20 @@ export default function ResetPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
+
   const router = useRouter()
   const supabase = createClient()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     const checkToken = () => {
-      let accessToken = null
-      let refreshToken = null
-      let type = null
+      let accessToken: string | null = null
+      let refreshToken: string | null = null
+      let type: string | null = null
 
       const hash = window.location.hash
       const hashParams = new URLSearchParams(hash.substring(1))
+
       accessToken = hashParams.get('access_token')
       refreshToken = hashParams.get('refresh_token')
       type = hashParams.get('type')
@@ -29,6 +34,7 @@ export default function ResetPasswordForm() {
       if (!accessToken || type !== 'recovery') {
         const token = searchParams.get('token')
         type = searchParams.get('type')
+
         if (token && type === 'recovery') {
           accessToken = token
           refreshToken = searchParams.get('refresh_token')
@@ -45,6 +51,7 @@ export default function ResetPasswordForm() {
         setIsValidToken(false)
       }
     }
+
     checkToken()
   }, [searchParams])
 
@@ -89,7 +96,7 @@ export default function ResetPasswordForm() {
       return
     }
 
-    const { data, error: sessionError } = await supabase.auth.setSession({
+    const { error: sessionError } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken || ''
     })
@@ -110,6 +117,7 @@ export default function ResetPasswordForm() {
       toast.success('¡Contraseña actualizada correctamente!')
       window.sessionStorage.removeItem('access_token')
       window.sessionStorage.removeItem('refresh_token')
+
       setTimeout(() => {
         router.push('/login')
       }, 2000)
