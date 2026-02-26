@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import toast from 'react-hot-toast'
 
-// IMPORTACIÓN RELATIVA: desde esta carpeta hasta 'src/components/dashboards/'
-import CreateUserForm from '@/components/dashboards/CreateUserForm'
+import CreateUserForm from '@/app/components/dashboards/CreateUserForm'
 export default function UsuariosPorEscuela() {
   const [schools, setSchools] = useState<any[]>([])
   const [selectedSchool, setSelectedSchool] = useState('')
