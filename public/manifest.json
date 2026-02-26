@@ -34,5 +34,6 @@
       "form_factor": "wide",
       "label": "Panel de administración KodaEd"
     }
-  ]
+  ],
+  "gcm_sender_id": "103953800507"
 }
