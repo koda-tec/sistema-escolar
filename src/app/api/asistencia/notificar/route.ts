@@ -80,15 +80,15 @@ export async function POST(request: Request) {
 
       // B. ENVIAR PUSH (NUEVO)
       if (parentId) {
-        tasks.push(
-          sendPushNotification(
-            parentId,
-            "⚠️ Aviso de Inasistencia",
-            `${nombreAlumno} no ha ingresado a la escuela hoy.`,
-            "/dashboard/hijos"
-          )
+        console.log(`📱 Intentando disparar Push para el padre ID: ${parentId}`)
+        await sendPushNotification(
+          parentId,
+          "⚠️ Aviso de Inasistencia",
+          `${nombreAlumno} no ingresó a la escuela hoy.`,
+          "/dashboard/hijos"
         )
       }
+    
 
       return Promise.allSettled(tasks) // Usamos allSettled para que si falla un mail no rompa el resto
     })

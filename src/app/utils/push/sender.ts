@@ -1,10 +1,9 @@
 import webpush from 'web-push'
 import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 
-// NO ponemos setVapidDetails aquí afuera
-
 export async function sendPushNotification(profileId: string, title: string, body: string, url: string = '/dashboard') {
-  // CONFIGURACIÓN DENTRO DE LA FUNCIÓN
+  console.log(`📡 SENDER: Configurando VAPID para enviar a ${profileId}`)
+  
   webpush.setVapidDetails(
     'mailto:info@kodatec.app',
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
@@ -14,21 +13,29 @@ export async function sendPushNotification(profileId: string, title: string, bod
   const supabase = getSupabaseAdmin()
 
   // 1. Buscamos la suscripción del usuario en la DB
-  const { data: pushData } = await supabase
+  const { data: pushData, error } = await supabase
     .from('push_subscriptions')
     .select('subscription_json')
     .eq('profile_id', profileId)
     .maybeSingle()
 
-  if (pushData?.subscription_json) {
-    try {
-      const payload = JSON.stringify({ title, body, url })
-      // El JSON que devuelve el navegador ya es compatible con web-push
-      const sub = pushData.subscription_json as any
-      await webpush.sendNotification(sub, payload)
-      console.log(`✅ Push enviada a: ${profileId}`)
-    } catch (error) {
-      console.error("❌ Error enviando Push:", error)
-    }
+  if (error) {
+    console.error("❌ SENDER: Error buscando suscripción en DB:", error.message)
+    return
+  }
+
+  if (!pushData) {
+    console.log(`⚠️ SENDER: El usuario ${profileId} no tiene ningún celular registrado para Push.`)
+    return
+  }
+
+  console.log(`✅ SENDER: Suscripción encontrada. Enviando señal a Google/Apple...`)
+
+  try {
+    const payload = JSON.stringify({ title, body, url })
+    await webpush.sendNotification(pushData.subscription_json as any, payload)
+    console.log(`🚀 SENDER: Notificación Push enviada con éxito!`)
+  } catch (error: any) {
+    console.error("❌ SENDER: Falló el envío final a través del navegador:", error.message)
   }
 }
