@@ -1,14 +1,15 @@
 /**
- * KodaEd Service Worker
- * Este archivo maneja el caché de la PWA y las Notificaciones Push.
+ * MOTOR DE LA PWA (Generado por Next-PWA / Workbox)
+ * NO BORRAR ESTA PARTE: Maneja el caché y funcionamiento offline.
  */
-
 if(!self.define){let e,a={};const s=(s,n)=>(s=new URL(s+".js",n).href,a[s]||new Promise(a=>{if("document"in self){const e=document.createElement("script");e.src=s,e.onload=a,document.head.appendChild(e)}else e=s,importScripts(s),a()}).then(()=>{let e=a[s];if(!e)throw new Error(`Module ${s} didn’t register its module`);return e}));self.define=(n,i)=>{const c=e||("document"in self?document.currentScript.src:"")||location.href;if(a[c])return;let t={};const r=e=>s(e,c),d={module:{uri:c},exports:t,require:r};a[c]=Promise.all(n.map(e=>d[e]||r(e))).then(e=>(i(...e),t))}}define(["./workbox-f1770938"],function(e){"use strict";self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute(self.__WB_MANIFEST || [],{ignoreURLParametersMatching:[/^utm_/,/^fbclid$/]}),e.cleanupOutdatedCaches(),e.registerRoute("/",new e.NetworkFirst({cacheName:"start-url",plugins:[{cacheWillUpdate:async({response:e})=>e&&"opaqueredirect"===e.type?new Response(e.body,{status:200,statusText:"OK",headers:e.headers}):e}]}),"GET")});
 
-// --- LÓGICA DE NOTIFICACIONES PUSH ---
-
+/**
+ * LÓGICA DE NOTIFICACIONES PUSH KODAED
+ * Esta parte escucha los mensajes del servidor.
+ */
 self.addEventListener('push', function (event) {
-  console.log('☁️ Push recibida...');
+  console.log('☁️ Push recibida en Android...');
   
   let data = { 
     title: 'Aviso de KodaEd', 
@@ -17,12 +18,9 @@ self.addEventListener('push', function (event) {
 
   try {
     if (event.data) {
-      // Intentamos procesar el mensaje que mandó el servidor
       data = event.data.json();
     }
   } catch (e) {
-    console.error("Error parseando el JSON del push:", e);
-    // Si falla el JSON, intentamos leerlo como texto plano
     if (event.data) {
         data = { title: 'KodaEd', body: event.data.text() };
     }
@@ -30,10 +28,10 @@ self.addEventListener('push', function (event) {
 
   const options = {
     body: data.body,
-    icon: '/icons/icon-192x192.png', // Logo de KodaEd
-    badge: '/icons/icon-192x192.png', // Icono chiquito para la barra de estado
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
     vibrate: [200, 100, 200],
-    tag: 'inasistencia-notif', // Evita que se amontonen mil notificaciones
+    tag: 'inasistencia-notif',
     renotify: true,
     data: {
       url: data.url || '/dashboard'
@@ -42,5 +40,16 @@ self.addEventListener('push', function (event) {
 
   event.waitUntil(
     self.registration.showNotification(data.title, options)
+  );
+});
+
+/**
+ * AL HACER CLIC EN LA NOTIFICACIÓN
+ * Abre la app en la página correspondiente (ej: la asistencia del hijo).
+ */
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  event.waitUntil(
+    clients.openWindow(event.notification.data.url)
   );
 });
