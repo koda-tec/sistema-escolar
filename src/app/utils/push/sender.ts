@@ -36,6 +36,6 @@ export async function sendPushNotification(profileId: string, title: string, bod
     await webpush.sendNotification(pushData.subscription_json as any, payload)
     console.log(`🚀 SENDER: Notificación Push enviada con éxito!`)
   } catch (error: any) {
-    console.error("❌ SENDER: Falló el envío final a través del navegador:", error.message)
+    console.error("❌ SENDER: Falló el envío final a través del navegado:", error.message)
   }
 }
