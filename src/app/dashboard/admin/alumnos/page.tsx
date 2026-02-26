@@ -71,7 +71,7 @@ export default function GestionAlumnos() {
         // === ENVIAR NOTIFICACIÓN AL PADRE ===
         if (formData.parentId) {
           try {
-            await fetch('/api/padres/notificar-vinculacion/route.ts', {
+            await fetch('/api/padres/notificar-vinculacion', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
