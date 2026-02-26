@@ -172,31 +172,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </>
             )}
 
-            {/* PADRE */}
+            {/* ROL: PADRE (CON BLOQUEO DE CLIC) */}
             {userRole === 'padre' && (
               <>
-                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest flex justify-between items-center">
-                   Familia {!isPaid && <span className="text-amber-500 text-[8px]">LIMITADO</span>}
+                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-[0.2em] flex justify-between items-center">
+                  Familia {!isPaid && <span className="text-amber-500 text-[8px]">LIMITADO</span>}
                 </div>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={getLinkStyle('/dashboard/hijos', !isPaid)}>
-                   <span className="flex items-center justify-between w-full">
-                     <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
-                     {!isPaid && <span className="text-xs">🔒</span>}
-                   </span>
-                </Link>
-              </>
-            )}
+                
+                {/* Link Mis Hijos */}
+                {!isPaid ? (
+                  <div className={getLinkStyle('/dashboard/hijos', true)}>
+                    <span className="flex items-center justify-between w-full opacity-50 cursor-not-allowed">
+                      <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
+                      <span className="text-xs">🔒</span>
+                    </span>
+                  </div>
+                ) : (
+                  <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={getLinkStyle('/dashboard/hijos')}>
+                    <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
+                  </Link>
+                )}
 
-            {/* COMUNICADOS (Para todos los que tengan un rol asignado) */}
-            {(hasSchool || userRole === 'padre' || userRole === 'admin_koda') && (
-              <>
-                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">Social</div>
-                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={getLinkStyle('/dashboard/comunicados', userRole === 'padre' && !isPaid)}>
-                   <span className="flex items-center justify-between w-full">
-                     <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
-                     {userRole === 'padre' && !isPaid && <span className="text-xs">🔒</span>}
-                   </span>
-                </Link>
+                {/* Link Comunicados */}
+                {!isPaid ? (
+                  <div className={getLinkStyle('/dashboard/comunicados', true)}>
+                    <span className="flex items-center justify-between w-full opacity-50 cursor-not-allowed">
+                      <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
+                      <span className="text-xs">🔒</span>
+                    </span>
+                  </div>
+                ) : (
+                  <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={getLinkStyle('/dashboard/comunicados')}>
+                    <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
+                  </Link>
+                )}
               </>
             )}
           </nav>

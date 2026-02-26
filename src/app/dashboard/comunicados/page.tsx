@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import PaywallGate from '@/app/components/PaywallGate'
 
 export default function ComunicadosPage() {
   const [comunicados, setComunicados] = useState<any[]>([])
   const [notasPadres, setNotasPadres] = useState<any[]>([])
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [respuestas, setRespuestas] = useState<Record<string, string>>({}) // Estado para los inputs de respuesta
+  const [respuestas, setRespuestas] = useState<Record<string, string>>({}) 
   
   const supabase = createClient()
 
@@ -21,24 +22,29 @@ export default function ComunicadosPage() {
   const fetchData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       const { data: profData } = await supabase
         .from('profiles')
         .select('id, role, subscription_active, school_id')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .maybeSingle()
       
       setProfile(profData)
       if (!profData) return
 
-      // 1. Cargar Comunicados Generales
-      const { data: comms } = await supabase
-        .from('communications')
-        .select(`*, profiles(full_name)`)
-        .eq('school_id', profData.school_id)
-        .order('created_at', { ascending: false })
-      setComunicados(comms || [])
+      // 1. CARGAR COMUNICADOS OFICIALES (Filtrados por RLS en la DB)
+      // Solo cargamos si no es un padre bloqueado (para ahorrar recursos)
+      if (profData.role !== 'padre' || profData.subscription_active) {
+        const { data: comms } = await supabase
+          .from('communications')
+          .select(`*, profiles(full_name)`)
+          .eq('school_id', profData.school_id)
+          .order('created_at', { ascending: false })
+        setComunicados(comms || [])
+      }
 
-      // 2. Si es Preceptor, cargar Notas de Padres de sus cursos
+      // 2. LÓGICA PRECEPTOR: Cargar Notas de Padres de sus cursos
       if (profData.role?.toLowerCase() === 'preceptor') {
         const { data: asignaciones } = await supabase
           .from('preceptor_courses')
@@ -67,7 +73,6 @@ export default function ComunicadosPage() {
     }
   }
 
-  // FUNCIÓN: ACTUALIZAR ESTADO (La que faltaba)
   const handleUpdateStatus = async (notaId: string, nuevoEstado: string) => {
     const { error } = await supabase
       .from('parent_requests')
@@ -80,7 +85,6 @@ export default function ComunicadosPage() {
     }
   }
 
-  // FUNCIÓN: JUSTIFICAR FALTA AUTOMÁTICAMENTE
   const handleJustificarFalta = async (nota: any) => {
     const fechaNota = new Date(nota.created_at).toISOString().split('T')[0]
     const { data, error } = await supabase
@@ -99,63 +103,53 @@ export default function ComunicadosPage() {
     }
   }
 
-  // FUNCIÓN: ENVIAR RESPUESTA POR ESCRITO
   const handleSendResponse = async (notaId: string) => {
-  const respuesta = respuestas[notaId];
-  if (!respuesta || respuesta.trim() === "") return toast.error("Escribí un mensaje");
+    const respuesta = respuestas[notaId]
+    if (!respuesta || respuesta.trim() === "") return toast.error("Escribí un mensaje");
 
-  setLoading(true);
-  
-  try {
-    // 1. Guardamos en DB
-    const { error: dbError } = await supabase
-      .from('parent_requests')
-      .update({ 
-        response_text: respuesta,
-        status: 'respondido',
-        responded_at: new Date().toISOString()
-      })
-      .eq('id', notaId);
+    setLoading(true)
+    try {
+      const { error: dbError } = await supabase
+        .from('parent_requests')
+        .update({ 
+          response_text: respuesta,
+          status: 'respondido',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', notaId);
 
-    if (dbError) throw dbError;
+      if (dbError) throw dbError;
 
-    // 2. Notificamos enviando el texto de la respuesta directamente
-    await fetch('/api/solicitudes/notificar-padre', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        requestId: notaId, 
-        responseText: respuesta // <--- MANDAMOS EL TEXTO DIRECTO
-      })
-    });
+      await fetch('/api/solicitudes/notificar-padre', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: notaId, responseText: respuesta })
+      });
 
-    toast.success("Respuesta enviada");
-    
-    // RESET LOCAL
-    setRespuestas(prev => {
-      const n = {...prev};
-      delete n[notaId];
-      return n;
-    });
-
-    // REFRESCAR DATOS (Forzar actualización de la UI)
-    fetchData(); 
-
-  } catch (err: any) {
-    toast.error("Error al procesar");
-  } finally {
-    setLoading(false);
+      toast.success("Respuesta enviada al padre")
+      setRespuestas(prev => { const n = {...prev}; delete n[notaId]; return n; })
+      fetchData()
+    } catch (err) {
+      toast.error("Error al procesar la respuesta")
+    } finally {
+      setLoading(false)
+    }
   }
-};
 
   if (loading) return (
     <div className="p-20 text-center animate-pulse flex flex-col items-center gap-4">
       <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600"></div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-sans">Sincronizando Mensajes</p>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sincronizando Mensajes</p>
     </div>
   )
 
+  // --- CONTROL DE ACCESO (PAYWALL) ---
   const userRole = profile?.role?.toLowerCase().trim()
+  const isPaid = profile?.subscription_active === true
+  
+  if (userRole === 'padre' && !isPaid) {
+    return <PaywallGate />
+  }
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20 text-left font-sans text-slate-900">
@@ -185,9 +179,9 @@ export default function ComunicadosPage() {
           <div className="flex items-center justify-between ml-2">
              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-amber-200 text-white">📥</div>
-                <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900">Notas de Padres</h2>
+                <h2 className="text-xl font-black uppercase tracking-tighter">Notas de Padres</h2>
              </div>
-             <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
+             <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase">
                {notasPadres.length} Pendientes
              </span>
           </div>
@@ -198,9 +192,9 @@ export default function ComunicadosPage() {
                 <div key={nota.id} className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-200 shadow-sm transition-all hover:shadow-md relative overflow-hidden group">
                   <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${nota.status === 'pendiente' ? 'bg-red-500' : 'bg-green-500'}`}></div>
 
-                  <div className="flex flex-col gap-6 text-left">
+                  <div className="flex flex-col gap-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
-                      <div className="space-y-1 text-left">
+                      <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
                             nota.type === 'inasistencia' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-blue-50 text-blue-600 border border-blue-100'
@@ -230,19 +224,19 @@ export default function ComunicadosPage() {
                     )}
 
                     {!nota.response_text && (
-                      <div className="space-y-4 pt-2 text-left">
+                      <div className="space-y-4 pt-2">
                         <textarea
                           value={respuestas[nota.id] || ''}
                           onChange={(e) => setRespuestas({ ...respuestas, [nota.id]: e.target.value })}
-                          placeholder="Escribí una respuesta oficial para el padre..."
-                          className="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500 border-none text-slate-900 font-medium transition-all"
+                          placeholder="Escribí una respuesta oficial..."
+                          className="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500 border-none text-slate-900 font-medium"
                           rows={2}
                         />
                         <div className="flex flex-wrap gap-2 justify-end">
                           {nota.type === 'inasistencia' && nota.status !== 'respondido' && (
-                            <button onClick={() => handleJustificarFalta(nota)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 active:scale-95">✅ Justificar</button>
+                            <button onClick={() => handleJustificarFalta(nota)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-700 shadow-lg active:scale-95">✅ Justificar</button>
                           )}
-                          <button onClick={() => handleSendResponse(nota.id)} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-100 active:scale-95">Enviar Respuesta ✉️</button>
+                          <button onClick={() => handleSendResponse(nota.id)} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-blue-700 shadow-lg active:scale-95">Responder Padre ✉️</button>
                         </div>
                       </div>
                     )}
@@ -265,7 +259,7 @@ export default function ComunicadosPage() {
                 </div>
               ))
             ) : (
-              <div className="p-12 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold italic">
+              <div className="p-12 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold italic text-left">
                 No hay notas pendientes de familias.
               </div>
             )}
@@ -275,23 +269,24 @@ export default function ComunicadosPage() {
 
       {/* SECCIÓN GENERAL: CANAL OFICIAL */}
       <section className="space-y-6 pt-10 border-t border-slate-100 text-left">
-        <div className="flex items-center gap-3 ml-2 text-left">
-             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-200 text-white">📣</div>
+        <div className="flex items-center gap-3 ml-2">
+             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-200 text-white font-black">📣</div>
              <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Canal Oficial</h2>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
           {comunicados.map((c) => (
             <Link key={c.id} href={`/dashboard/comunicados/${c.id}`} className="bg-white p-7 rounded-[2.5rem] border border-slate-200 hover:border-blue-500 hover:shadow-xl transition-all group flex justify-between items-center text-left">
-              <div className="space-y-2 text-left">
+              <div className="space-y-2">
                 <h3 className="text-xl font-black group-hover:text-blue-600 transition-colors leading-none italic text-slate-900">{c.title}</h3>
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] leading-none">
                   {new Date(c.created_at).toLocaleDateString('es-AR')} • Por {c.profiles?.full_name}
                 </p>
               </div>
-              <span className="text-slate-300 group-hover:text-blue-600 transition-all text-2xl group-hover:translate-x-1">➜</span>
+              <span className="text-slate-300 group-hover:text-blue-600 transition-all text-2xl group-hover:translate-x-1 duration-300">➜</span>
             </Link>
           ))}
+          {comunicados.length === 0 && <p className="p-10 text-center text-slate-400 font-bold uppercase text-[10px]">Sin anuncios publicados.</p>}
         </div>
       </section>
     </div>

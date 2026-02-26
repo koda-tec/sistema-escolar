@@ -123,7 +123,13 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm text-left">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Notas a Preceptoría</h3>
-            <Link href="/dashboard/comunicados/solicitud" className="text-[10px] font-black text-blue-600 uppercase underline underline-offset-4 decoration-2">Nueva Nota +</Link>
+            
+            {/* SOLO MOSTRAR EL LINK SI PAGÓ */}
+            {isPaid && (
+              <Link href="/dashboard/comunicados/solicitud" className="text-[10px] font-black text-blue-600 uppercase underline underline-offset-4 decoration-2">
+                Nueva Nota +
+              </Link>
+            )}
           </div>
 
           <div className="space-y-6">
