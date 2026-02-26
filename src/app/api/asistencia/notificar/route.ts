@@ -8,21 +8,23 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    const { courseId } = await request.json()
+    const body = await request.json()
+    const { courseId } = body
+    
+    if (!courseId) throw new Error("courseId no recibido")
+
     const supabaseAdmin = getSupabaseAdmin()
     const hoy = new Date().toISOString().split('T')[0]
 
-    // 1. Buscamos las inasistencias de hoy con los datos del padre y el ID para la Push
+    // 1. Buscamos inasistencias
     const { data: inasistencias, error: queryError } = await supabaseAdmin
       .from('attendance')
       .select(`
         status,
         students!inner (
-          id,
           full_name,
           parent_id,
           profiles:parent_id (
-            id,
             email,
             full_name
           )
@@ -32,77 +34,66 @@ export async function POST(request: Request) {
       .eq('date', hoy)
       .eq('students.course_id', courseId)
 
-    if (queryError) throw queryError
-
-    // Si no hay ausentes, avisamos al frontend
-    if (!inasistencias || inasistencias.length === 0) {
-      return NextResponse.json({ 
-        success: true, 
-        message: 'No hubo ausencias para notificar en este curso.' 
-      })
+    if (queryError) {
+      console.error("❌ Error Supabase:", queryError)
+      throw queryError
     }
 
-    // 2. Preparamos el envío masivo (Email + Push)
-    const notificationPromises = inasistencias.map(async (reg: any) => {
-      const parentId = reg.students.parent_id
-      const emailPadre = reg.students.profiles?.email
-      const nombreAlumno = reg.students.full_name
-      const nombrePadre = reg.students.profiles?.full_name
+    if (!inasistencias || inasistencias.length === 0) {
+      return NextResponse.json({ success: true, message: 'Sin ausentes hoy.' })
+    }
 
-      const tasks = []
+    // 2. Procesamos envíos uno por uno
+    // CORRECCIÓN: Tipamos reg como 'any' para evitar que TS se queje de la estructura de Supabase
+    for (const reg of (inasistencias as any[])) {
+      
+      // Acceso seguro a los datos del estudiante
+      const studentData = Array.isArray(reg.students) ? reg.students[0] : reg.students;
+      const parentProfile = Array.isArray(studentData?.profiles) ? studentData.profiles[0] : studentData?.profiles;
 
-      // A. ENVIAR EMAIL (Resend)
-      if (emailPadre) {
-        tasks.push(
-          resend.emails.send({
+      const studentName = studentData?.full_name
+      const parentEmail = parentProfile?.email
+      const parentId = studentData?.parent_id
+
+      // A. Intento de EMAIL
+      if (parentEmail) {
+        try {
+          await resend.emails.send({
             from: 'KodaEd <alertas@kodatec.app>',
-            to: [emailPadre],
-            subject: `⚠️ Aviso de inasistencia: ${nombreAlumno}`,
-            html: `
-              <div style="font-family: sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
-                <div style="background-color: #2563eb; padding: 30px; text-align: center;">
-                   <h1 style="color: white; margin: 0; font-size: 24px;">KodaEd Avisa</h1>
-                </div>
-                <div style="padding: 30px;">
-                  <p>Hola <strong>${nombrePadre}</strong>,</p>
-                  <p>Te informamos que tu hijo/a <strong>${nombreAlumno}</strong> ha sido marcado/a como <strong>AUSENTE</strong> el día de hoy.</p>
-                  <div style="margin: 20px 0; padding: 15px; background-color: #f8fafc; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0;">
-                    <p style="margin: 0; font-weight: bold; color: #ef4444;">ESTADO: AUSENTE</p>
-                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #64748b;">${new Date().toLocaleDateString('es-AR')}</p>
-                  </div>
-                  <p style="font-size: 14px; color: #64748b;">Si consideras que esto es un error, por favor contacta a la preceptoría de la escuela.</p>
-                </div>
-              </div>
-            `
+            to: [parentEmail],
+            subject: `⚠️ Inasistencia: ${studentName}`,
+            html: `<p>Aviso: ${studentName} no ingresó a la escuela hoy.</p>`
           })
-        )
+          console.log(`📧 Email enviado a ${parentEmail}`)
+        } catch (e: any) {
+          console.error(`❌ Falló email para ${studentName}:`, e.message)
+        }
       }
 
-      // B. ENVIAR PUSH (NUEVO)
+      // B. Intento de PUSH
       if (parentId) {
-        console.log(`📱 Intentando disparar Push para el padre ID: ${parentId}`)
-        await sendPushNotification(
-          parentId,
-          "⚠️ Aviso de Inasistencia",
-          `${nombreAlumno} no ingresó a la escuela hoy.`,
-          "/dashboard/hijos"
-        )
+        try {
+          console.log(`📱 Intentando Push para ID: ${parentId}`)
+          await sendPushNotification(
+            parentId,
+            "⚠️ Aviso de Inasistencia",
+            `${studentName} no ingresó a la escuela hoy.`,
+            "/dashboard/hijos"
+          )
+          console.log(`✅ Push enviada a ${studentName}`)
+        } catch (e: any) {
+          console.error(`❌ Falló Push para ${studentName}:`, e.message)
+        }
       }
-    
-
-      return Promise.allSettled(tasks) // Usamos allSettled para que si falla un mail no rompa el resto
-    })
-
-    // 3. Ejecutamos todas las notificaciones
-    await Promise.all(notificationPromises)
+    }
 
     return NextResponse.json({ 
       success: true, 
-      message: `Se procesaron ${inasistencias.length} avisos (Email y Push) correctamente.` 
+      message: `Procesados ${inasistencias.length} alumnos.` 
     })
 
   } catch (error: any) {
-    console.error('Crash Notificador:', error.message)
+    console.error('❌ CRASH TOTAL API NOTIFICAR:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
