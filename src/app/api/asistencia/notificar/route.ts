@@ -3,11 +3,11 @@ import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { Resend } from 'resend'
 import { sendPushNotification } from '@/app/utils/push/sender'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY)
     const body = await request.json()
     const { courseId } = body
     

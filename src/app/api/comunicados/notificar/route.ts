@@ -3,12 +3,12 @@ import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { Resend } from 'resend'
 
 // 1. Inicializar Resend con tu API KEY
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY)
     const { communicationId } = await request.json()
     if (!communicationId) throw new Error("communicationId es requerido")
 

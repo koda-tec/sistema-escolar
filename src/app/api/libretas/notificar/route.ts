@@ -2,14 +2,12 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { Resend } from 'resend'
 
-// Eliminamos la línea 4 que causaba el error porque estaba fuera de la función
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    // El objeto 'request' solo es accesible AQUÍ adentro
+    const resend = new Resend(process.env.RESEND_API_KEY)
     const { studentId, trimestre, anio } = await request.json()
     const supabase = getSupabaseAdmin()
 

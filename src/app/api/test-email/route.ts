@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function GET() {
   console.log('🔍 API Key:', process.env.RESEND_API_KEY?.substring(0, 10) + '...')
 
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY)
     const { data, error } = await resend.emails.send({
       from: 'KodaEd <onboarding@resend.dev>',
       to: ['TU_EMAIL_DE_PRUEBA'], // Poner un email real

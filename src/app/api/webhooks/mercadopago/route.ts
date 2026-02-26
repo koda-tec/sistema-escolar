@@ -4,7 +4,6 @@ import { MercadoPagoConfig, Payment } from 'mercadopago'
 import { Resend } from 'resend'
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +11,7 @@ export async function POST(request: Request) {
   console.log("--- 📥 NUEVO WEBHOOK DE MERCADO PAGO ---");
 
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const url = new URL(request.url);
     const type = url.searchParams.get('type') || url.searchParams.get('topic');
     const dataId = url.searchParams.get('data.id') || url.searchParams.get('id');

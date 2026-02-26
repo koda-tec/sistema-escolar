@@ -3,12 +3,13 @@ import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { validatePassword } from '@/app/utils/passwordValidator'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY)
     const supabaseAdmin = getSupabaseAdmin()
+
     // 1. Extraemos assignedCourses del body
     const { email, fullName, role, schoolId, password, assignedCourses } = await request.json()
 
