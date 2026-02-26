@@ -82,6 +82,7 @@ export async function POST(request: Request) {
     })
 
     if (parentId) {
+      
       await sendPushNotification(
         parentId, 
         "📄 Nueva Libreta Disponible",
