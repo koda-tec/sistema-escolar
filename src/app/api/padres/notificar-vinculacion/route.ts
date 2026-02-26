@@ -1,81 +1,85 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/app/utils/supabase/server'
+import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
     const { studentId, studentName, padreId } = await request.json()
 
+    console.log(`📧 Iniciando notificación: Estudiante ${studentName}, PadreID ${padreId}`);
+
     if (!studentId || !padreId) {
-      return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
+      return NextResponse.json({ error: 'Faltan IDs' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    // Inicializamos Resend dentro para asegurar que tome la API KEY de Vercel
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    const supabaseAdmin = getSupabaseAdmin()
 
-    // Obtener datos del padre
-    const { data: padre, error: padreError } = await supabase
+    // 1. Obtener datos del padre
+    const { data: padre, error: padreError } = await supabaseAdmin
       .from('profiles')
       .select('full_name, email')
       .eq('id', padreId)
       .single()
 
-    if (padreError || !padre) {
-      return NextResponse.json({ error: 'No se encontró el padre' }, { status: 404 })
+    if (padreError || !padre?.email) {
+      console.error("❌ Error: Padre no encontrado o sin email", padreError);
+      return NextResponse.json({ error: 'Padre no encontrado' }, { status: 404 })
     }
 
-    // Obtener datos de la escuela
-    const { data: student } = await supabase
+    // 2. Obtener nombre de la escuela (Manejo de relación por si viene como array)
+    const { data: student, error: stuError } = await supabaseAdmin
       .from('students')
-      .select('school_id')
+      .select('schools(name)')
       .eq('id', studentId)
       .single()
 
-    const { data: escuela } = await supabase
-      .from('schools')
-      .select('name')
-      .eq('id', student?.school_id)
-      .single()
+    if (stuError) console.error("⚠️ Error obteniendo escuela:", stuError);
 
-    const nombreEscuela = escuela?.name || 'la institución'
+    // Supabase devuelve relaciones como objeto o array dependiendo del esquema
+    const escuelaInfo: any = student?.schools;
+    const nombreEscuela = Array.isArray(escuelaInfo) 
+      ? escuelaInfo[0]?.name 
+      : escuelaInfo?.name || 'KodaEd';
 
-    // Enviar correo
-    await resend.emails.send({
-      from: 'KodaEd <notificaciones@kodaed.com>',
+    // 3. Enviar correo
+    const { data: emailRes, error: emailError } = await resend.emails.send({
+      from: 'KodaEd <bienvenida@kodatec.app>',
       to: [padre.email],
-      subject: '👨‍🎓 Vinculación con tu hijo en KodaEd',
+      subject: `👨‍🎓 Acceso familiar: ${studentName}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-          <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0;">👋 Bienvenido a KodaEd</h1>
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; background-color: #ffffff;">
+          <div style="background-color: #0f172a; padding: 40px 20px; text-align: center;">
+            <h1 style="color: #3b82f6; margin: 0; font-size: 26px;">Koda<span style="color: white;">Ed</span></h1>
           </div>
-          
-          <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+          <div style="padding: 40px; color: #1e293b; line-height: 1.6;">
             <p style="font-size: 18px;">Hola <strong>${padre.full_name}</strong>,</p>
-            
-            <p>${nombreEscuela} te ha vinculado al legajo de <strong>${studentName}</strong>.</p>
-            
-            <p>Ya podés ingresar a la app para ver su asistencia, libretas y comunicados.</p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" 
-                 style="display: inline-block; background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 18px;">
-                Ingresar al Panel →
-              </a>
+            <p>La institución <strong>${nombreEscuela}</strong> te ha vinculado al legajo digital de:</p>
+            <div style="background-color: #f8fafc; padding: 20px; margin: 20px 0; text-align: center; border-radius: 16px;">
+              <p style="margin: 0; font-size: 20px; font-weight: 800;">${studentName}</p>
             </div>
-            
-            <p style="color: #64748b; font-size: 14px; margin-top: 20px;">
-              Si no reconocés esta vinculación, contactá a la institución.
-            </p>
+            <p>Ya podés ingresar a la App con tu cuenta de Google o email para ver inasistencias y libretas.</p>
+            <div style="text-align: center; margin-top: 35px;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Ingresar al Panel</a>
+            </div>
           </div>
         </div>
       `
     })
 
+    if (emailError) {
+      console.error("❌ Error de Resend:", emailError);
+      return NextResponse.json({ error: emailError.message }, { status: 400 })
+    }
+
+    console.log("✅ Email de vinculación enviado con éxito");
     return NextResponse.json({ success: true })
+
   } catch (error: any) {
-    console.error('Error enviando notificación:', error)
+    console.error('❌ Crash en API vinculación:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
