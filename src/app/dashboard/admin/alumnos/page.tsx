@@ -1,85 +1,192 @@
-import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
-import { Resend } from 'resend'
+'use client'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/app/utils/supabase/client'
+import toast from 'react-hot-toast'
 
-export const dynamic = 'force-dynamic'
+export default function GestionAlumnos() {
+  const [students, setStudents] = useState<any[]>([])
+  const [courses, setCourses] = useState<any[]>([])
+  const [parents, setParents] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false) 
 
-export async function POST(request: Request) {
-  try {
-    const { studentId, studentName, padreId } = await request.json()
+  // Form state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [formData, setFormData] = useState({ fullName: '', dni: '', courseId: '', parentId: '' })
 
-    console.log(`📧 Iniciando notificación: Estudiante ${studentName}, PadreID ${padreId}`);
+  const supabase = createClient()
 
-    if (!studentId || !padreId) {
-      return NextResponse.json({ error: 'Faltan IDs' }, { status: 400 })
-    }
+  useEffect(() => { fetchInitialData() }, [])
 
-    // Inicializamos Resend dentro para asegurar que tome la API KEY de Vercel
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    const supabaseAdmin = getSupabaseAdmin()
+  async function fetchInitialData() {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
 
-    // 1. Obtener datos del padre
-    const { data: padre, error: padreError } = await supabaseAdmin
-      .from('profiles')
-      .select('full_name, email')
-      .eq('id', padreId)
-      .single()
+    const { data: c } = await supabase.from('courses').select('*').eq('school_id', profile?.school_id).order('name')
+    setCourses(c || [])
 
-    if (padreError || !padre?.email) {
-      console.error("❌ Error: Padre no encontrado o sin email", padreError);
-      return NextResponse.json({ error: 'Padre no encontrado' }, { status: 404 })
-    }
+    const { data: p } = await supabase.from('profiles').select('id, full_name').eq('role', 'padre').eq('school_id', profile?.school_id)
+    setParents(p || [])
 
-    // 2. Obtener nombre de la escuela (Manejo de relación por si viene como array)
-    const { data: student, error: stuError } = await supabaseAdmin
+    const { data: s } = await supabase
       .from('students')
-      .select('schools(name)')
-      .eq('id', studentId)
-      .single()
-
-    if (stuError) console.error("⚠️ Error obteniendo escuela:", stuError);
-
-    // Supabase devuelve relaciones como objeto o array dependiendo del esquema
-    const escuelaInfo: any = student?.schools;
-    const nombreEscuela = Array.isArray(escuelaInfo) 
-      ? escuelaInfo[0]?.name 
-      : escuelaInfo?.name || 'KodaEd';
-
-    // 3. Enviar correo
-    const { data: emailRes, error: emailError } = await resend.emails.send({
-      from: 'KodaEd <bienvenida@kodatec.app>',
-      to: [padre.email],
-      subject: `👨‍🎓 Acceso familiar: ${studentName}`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; background-color: #ffffff;">
-          <div style="background-color: #0f172a; padding: 40px 20px; text-align: center;">
-            <h1 style="color: #3b82f6; margin: 0; font-size: 26px;">Koda<span style="color: white;">Ed</span></h1>
-          </div>
-          <div style="padding: 40px; color: #1e293b; line-height: 1.6;">
-            <p style="font-size: 18px;">Hola <strong>${padre.full_name}</strong>,</p>
-            <p>La institución <strong>${nombreEscuela}</strong> te ha vinculado al legajo digital de:</p>
-            <div style="background-color: #f8fafc; padding: 20px; margin: 20px 0; text-align: center; border-radius: 16px;">
-              <p style="margin: 0; font-size: 20px; font-weight: 800;">${studentName}</p>
-            </div>
-            <p>Ya podés ingresar a la App con tu cuenta de Google o email para ver inasistencias y libretas.</p>
-            <div style="text-align: center; margin-top: 35px;">
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Ingresar al Panel</a>
-            </div>
-          </div>
-        </div>
-      `
-    })
-
-    if (emailError) {
-      console.error("❌ Error de Resend:", emailError);
-      return NextResponse.json({ error: emailError.message }, { status: 400 })
-    }
-
-    console.log("✅ Email de vinculación enviado con éxito");
-    return NextResponse.json({ success: true })
-
-  } catch (error: any) {
-    console.error('❌ Crash en API vinculación:', error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+      .select('*, courses(name, section, shift), profiles:parent_id(full_name)')
+      .eq('school_id', profile?.school_id)
+      .order('full_name')
+    setStudents(s || [])
+    setLoading(false)
   }
+
+   // --- NUEVA LÓGICA DE SUBMIT INTEGRADA ---
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
+
+    try {
+      if (editingId) {
+        // --- ACTUALIZAR ALUMNO ---
+        const { error } = await supabase.from('students').update({
+          full_name: formData.fullName,
+          dni: formData.dni,
+          course_id: formData.courseId,
+          parent_id: formData.parentId
+        }).eq('id', editingId)
+        
+        if (error) throw error
+        toast.success("Alumno actualizado") 
+        setEditingId(null) 
+      } else {
+        // --- CREAR ALUMNO NUEVO ---
+        const { data: newStudent, error: createError } = await supabase
+          .from('students')
+          .insert({
+            full_name: formData.fullName,
+            dni: formData.dni,
+            course_id: formData.courseId,
+            parent_id: formData.parentId,
+            school_id: profile?.school_id
+          })
+          .select()
+          .single()
+
+        if (createError) throw createError
+        toast.success("Alumno registrado con éxito")
+        
+        // --- DISPARAR NOTIFICACIÓN AL PADRE ---
+        if (formData.parentId && newStudent) {
+          fetch('/api/padres/notificar-vinculacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId: newStudent.id,
+              studentName: formData.fullName,
+              padreId: formData.parentId
+            })
+          }).catch(e => console.error("Error notificación:", e))
+        }
+      }
+
+      setFormData({ fullName: '', dni: '', courseId: '', parentId: '' })
+      fetchInitialData()
+
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+
+  const handleEdit = (alumno: any) => {
+    setEditingId(alumno.id)
+    setFormData({
+      fullName: alumno.full_name,
+      dni: alumno.dni,
+      courseId: alumno.course_id,
+      parentId: alumno.parent_id
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("¿Dar de baja a este alumno? Se borrará su historial de asistencia y libretas.")) return
+    const { error } = await supabase.from('students').delete().eq('id', id)
+    if (!error) { toast.success("Alumno eliminado"); fetchInitialData() }
+  }
+
+  if (loading) return <div className="p-20 text-center animate-pulse font-black text-slate-400 uppercase tracking-widest">Sincronizando Legajos...</div>
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-700 pb-20 text-left">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">Gestión de Alumnos</h1>
+
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+        <div className="md:col-span-2 text-xs font-black text-blue-600 border-b border-slate-50 pb-2 uppercase tracking-[0.2em]">
+          {editingId ? '📝 Editando Alumno' : '✨ Nuevo Ingreso'}
+        </div>
+        
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Nombre Completo</label>
+          <input value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-bold" placeholder="Apellido y Nombre" required />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-2">DNI / Legajo</label>
+          <input value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-bold" placeholder="Sin puntos" required />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Curso y División</label>
+          <select value={formData.courseId} onChange={e => setFormData({...formData, courseId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-bold" required>
+            <option value="">Seleccionar...</option>
+            {courses.map(c => <option key={c.id} value={c.id}>{c.name} "{c.section}" - {c.shift}</option>)}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Vincular Tutor</label>
+          <select value={formData.parentId} onChange={e => setFormData({...formData, parentId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none text-slate-900 font-bold" required>
+            <option value="">Buscar responsable...</option>
+            {parents.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+          </select>
+        </div>
+
+        <div className="md:col-span-2 flex gap-3 mt-2">
+            <button className="flex-1 bg-slate-950 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-blue-600 transition-all active:scale-95">
+            {editingId ? 'Guardar Cambios' : 'Registrar Alumno'}
+            </button>
+            {editingId && (
+                <button type="button" onClick={() => {setEditingId(null); setFormData({fullName:'', dni:'', courseId:'', parentId:''})}} className="px-8 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase text-xs">Cancelar</button>
+            )}
+        </div>
+      </form>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden text-left">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              <tr><th className="p-6">Alumno</th><th className="p-6">Curso / Turno</th><th className="p-6">Responsable</th><th className="p-6 text-center">Acciones</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {students.map(s => (
+                <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="p-6 font-bold text-slate-800 notranslate">{s.full_name} <br/><span className="text-[10px] font-medium text-slate-400">DNI {s.dni}</span></td>
+                  <td className="p-6 text-sm font-bold text-slate-600">{s.courses?.name} "{s.courses?.section}" <br/><span className="text-[9px] uppercase opacity-50">{s.courses?.shift}</span></td>
+                  <td className="p-6 text-blue-600 font-bold text-xs">{s.profiles?.full_name}</td>
+                  <td className="p-6">
+                    <div className="flex justify-center gap-2">
+                        <button onClick={() => handleEdit(s)} className="p-2 bg-slate-100 rounded-xl hover:bg-blue-100 hover:text-blue-600 transition-all">✏️</button>
+                        <button onClick={() => handleDelete(s.id)} className="p-2 bg-slate-100 rounded-xl hover:bg-red-100 hover:text-red-600 transition-all">🗑️</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
 }
