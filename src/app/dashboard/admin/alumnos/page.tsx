@@ -8,6 +8,7 @@ export default function GestionAlumnos() {
   const [courses, setCourses] = useState<any[]>([])
   const [parents, setParents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false) 
 
   // Form state
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -36,63 +37,67 @@ export default function GestionAlumnos() {
     setLoading(false)
   }
 
+   // --- NUEVA LÓGICA DE SUBMIT INTEGRADA ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
 
-    if (editingId) {
-      // ACTUALIZAR
-      const { error } = await supabase.from('students').update({
-        full_name: formData.fullName,
-        dni: formData.dni,
-        course_id: formData.courseId,
-        parent_id: formData.parentId
-      }).eq('id', editingId)
-      
-      if (!error) { 
+    try {
+      if (editingId) {
+        // --- ACTUALIZAR ALUMNO ---
+        const { error } = await supabase.from('students').update({
+          full_name: formData.fullName,
+          dni: formData.dni,
+          course_id: formData.courseId,
+          parent_id: formData.parentId
+        }).eq('id', editingId)
+        
+        if (error) throw error
         toast.success("Alumno actualizado") 
         setEditingId(null) 
-      }
-      else toast.error(error.message)
-    } else {
-      // CREAR
-      const { data: newStudent, error } = await supabase.from('students').insert({
-        full_name: formData.fullName,
-        dni: formData.dni,
-        course_id: formData.courseId,
-        parent_id: formData.parentId,
-        school_id: profile?.school_id
-      }).select().single()
+      } else {
+        // --- CREAR ALUMNO NUEVO ---
+        const { data: newStudent, error: createError } = await supabase
+          .from('students')
+          .insert({
+            full_name: formData.fullName,
+            dni: formData.dni,
+            course_id: formData.courseId,
+            parent_id: formData.parentId,
+            school_id: profile?.school_id
+          })
+          .select()
+          .single()
 
-      if (!error) {
-        toast.success("Alumno registrado")
+        if (createError) throw createError
+        toast.success("Alumno registrado con éxito")
         
-        // === ENVIAR NOTIFICACIÓN AL PADRE ===
-        if (formData.parentId) {
-          try {
-            await fetch('/api/padres/notificar-vinculacion', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    studentId: newStudent.id,
-    studentName: formData.fullName,
-    padreId: formData.parentId
-  })
-})
-            toast.success("Notificación enviada al padre")
-          } catch (err) {
-            console.error('Error enviando notificación al padre:', err)
-          }
+        // --- DISPARAR NOTIFICACIÓN AL PADRE ---
+        if (formData.parentId && newStudent) {
+          fetch('/api/padres/notificar-vinculacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId: newStudent.id,
+              studentName: formData.fullName,
+              padreId: formData.parentId
+            })
+          }).catch(e => console.error("Error notificación:", e))
         }
-        // ======================================
       }
-      else toast.error(error.message)
-    }
 
-    setFormData({ fullName: '', dni: '', courseId: '', parentId: '' })
-    fetchInitialData()
+      setFormData({ fullName: '', dni: '', courseId: '', parentId: '' })
+      fetchInitialData()
+
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
+
 
   const handleEdit = (alumno: any) => {
     setEditingId(alumno.id)
