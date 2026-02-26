@@ -32,9 +32,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setProfile(profileData)
       setLoading(false)
 
-      // Control de cambio de contraseña para personal
+      // Control de cambio de contraseña para preceptor, docente, directivo y padre
       const rol = profileData?.role?.toLowerCase().trim()
-      const debeCambiarPassword = rol === 'preceptor' || rol === 'docente'
+      const debeCambiarPassword = ['preceptor', 'docente', 'directivo', 'padre'].includes(rol)
       const isChangingPassPage = pathname.startsWith('/dashboard/perfil/cambiar-password')
       
       if (profileData?.must_change_password && debeCambiarPassword && !isChangingPassPage) {
@@ -55,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasSchool = !!profile?.school_id
   const brandName = profile?.schools?.name || "KodaEd"
   
-  const mustChangePassword = profile?.must_change_password && (userRole === 'preceptor' || userRole === 'docente')
+  const mustChangePassword = profile?.must_change_password && ['preceptor', 'docente', 'directivo', 'padre'].includes(userRole)
 
   const getLinkStyle = (path: string, isLocked: boolean = false) => {
     const isActive = pathname === path
@@ -136,7 +136,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin-koda" className={getLinkStyle('/dashboard/admin-koda')}>
                    <span>🏢</span> Gestión Escuelas
                 </Link>
-                 {/* Agrega este Link nuevo: */}
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin-koda/usuarios-por-escuela" className={getLinkStyle('/dashboard/admin-koda/usuarios-por-escuela')}>
                    <span>👥</span> Creación de Directivo
                 </Link>
