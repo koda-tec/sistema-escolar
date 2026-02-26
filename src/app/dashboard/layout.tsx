@@ -32,9 +32,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setProfile(profileData)
       setLoading(false)
 
-      // Control de cambio de contraseña para preceptor, docente, directivo y padre
+      // Control de cambio de contraseña para personal y directivo
       const rol = profileData?.role?.toLowerCase().trim()
-      const debeCambiarPassword = ['preceptor', 'docente', 'directivo', 'padre'].includes(rol)
+      const debeCambiarPassword = rol === 'preceptor' || rol === 'docente' || rol === 'directivo'
+      
       const isChangingPassPage = pathname.startsWith('/dashboard/perfil/cambiar-password')
       
       if (profileData?.must_change_password && debeCambiarPassword && !isChangingPassPage) {
