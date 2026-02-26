@@ -1,15 +1,12 @@
 import type { NextConfig } from "next";
-import withPWAInit from "@ducanh2912/next-pwa";
-
-const withPWA = withPWAInit({
+const withPWA = require("next-pwa")({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
+  swSrc: "src/worker/index.ts", // Tu lógica de Push está acá
 });
 
 const nextConfig: NextConfig = {
-  // Esto silencia el error y confirma que usaremos Webpack para los plugins
-  // @ts-ignore
-  turbopack: {}, 
+  // Tus otras configuraciones de Next aquí
 };
 
 export default withPWA(nextConfig);

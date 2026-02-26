@@ -1,9 +1,16 @@
 /// <reference lib="webworker" />
 
-export default null;
-declare var self: ServiceWorkerGlobalScope;
+import { clientsClaim } from 'workbox-core';
+import { precacheAndRoute } from 'workbox-precaching';
 
-// ESCUCHADOR DE PUSH
+declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: any };
+
+// OBLIGATORIO: Esto inyecta el manifiesto de Next.js
+precacheAndRoute(self.__WB_MANIFEST || []);
+clientsClaim();
+self.skipWaiting();
+
+// ESCUCHADOR DE PUSH (Tu código está perfecto, mantenelo así)
 self.addEventListener('push', (event: PushEvent) => {
   let data = {
     title: 'KodaEd',
@@ -13,7 +20,8 @@ self.addEventListener('push', (event: PushEvent) => {
 
   if (event.data) {
     try {
-      data = event.data.json();
+      const payload = event.data.json();
+      data = { ...data, ...payload };
     } catch (e) {
       data.body = event.data.text();
     }
@@ -36,16 +44,6 @@ self.addEventListener('push', (event: PushEvent) => {
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close();
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) client = clientList[i];
-        }
-        // @ts-ignore
-        return client.focus();
-      }
-      return self.clients.openWindow(event.notification.data.url);
-    })
+    self.clients.openWindow(event.notification.data.url || '/dashboard')
   );
 });
