@@ -8,33 +8,28 @@ if(!self.define){let e,a={};const s=(s,n)=>(s=new URL(s+".js",n).href,a[s]||new 
 // --- LÓGICA DE NOTIFICACIONES PUSH ---
 
 self.addEventListener('push', function (event) {
-  console.log('☁️ Push recibida en el dispositivo');
+  let data = { title: 'Aviso Escolar', body: 'Tienes una nueva notificación' };
   
   if (event.data) {
     try {
-      const data = event.data.json();
-      const options = {
-        body: data.body,
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-192x192.png',
-        vibrate: [100, 50, 100],
-        data: {
-          url: data.url || '/dashboard'
-        }
-      };
-
-      event.waitUntil(
-        self.registration.showNotification(data.title, options)
-      );
+      data = event.data.json();
     } catch (e) {
-      console.error("Error procesando JSON de la notificación:", e);
+      // Si no es JSON, quizás es texto plano
+      data.body = event.data.text();
     }
   }
-});
 
-self.addEventListener('notificationclick', function (event) {
-  event.notification.close();
+  const options = {
+    body: data.body,
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    vibrate: [200, 100, 200],
+    tag: 'inasistencia-tag', // Evita que se amontonen si llegan varias
+    renotify: true,
+    data: { url: data.url || '/dashboard' }
+  };
+
   event.waitUntil(
-    clients.openWindow(event.notification.data.url)
+    self.registration.showNotification(data.title, options)
   );
 });

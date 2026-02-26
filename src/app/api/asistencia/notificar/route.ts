@@ -56,19 +56,35 @@ export async function POST(request: Request) {
       const parentId = studentData?.parent_id
 
       // A. Intento de EMAIL
+      // DENTRO DEL LOOP DE INASISTENCIAS EN LA API:
       if (parentEmail) {
         try {
           await resend.emails.send({
             from: 'KodaEd <alertas@kodatec.app>',
             to: [parentEmail],
-            subject: `⚠️ Inasistencia: ${studentName}`,
-            html: `<p>Aviso: ${studentName} no ingresó a la escuela hoy.</p>`
+            subject: `⚠️ Aviso de inasistencia: ${studentName}`,
+            html: `
+              <div style="font-family: sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
+                <div style="background-color: #2563eb; padding: 30px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">KodaEd Avisa</h1>
+                </div>
+                <div style="padding: 30px;">
+                  <p>Hola <strong>${reg.students.profiles?.full_name || 'Padre/Tutor'}</strong>,</p>
+                  <p>Te informamos que tu hijo/a <strong>${studentName}</strong> ha sido marcado/a como <strong>AUSENTE</strong> el día de hoy.</p>
+                  <div style="margin: 20px 0; padding: 15px; background-color: #f8fafc; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0;">
+                    <p style="margin: 0; font-weight: bold; color: #ef4444;">ESTADO: AUSENTE</p>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #64748b;">${new Date().toLocaleDateString('es-AR')}</p>
+                  </div>
+                  <p style="font-size: 14px; color: #64748b;">Si consideras que esto es un error, por favor contacta a la preceptoría.</p>
+                </div>
+              </div>
+            `
           })
-          console.log(`📧 Email enviado a ${parentEmail}`)
         } catch (e: any) {
           console.error(`❌ Falló email para ${studentName}:`, e.message)
         }
       }
+
 
       // B. Intento de PUSH
       if (parentId) {
