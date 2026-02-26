@@ -259,7 +259,7 @@ export default function ComunicadosPage() {
                 </div>
               ))
             ) : (
-              <div className="p-12 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold italic text-left">
+              <div className="p-12 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold italic">
                 No hay notas pendientes de familias.
               </div>
             )}
