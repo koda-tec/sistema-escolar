@@ -1,9 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { validatePassword } from '@/app/utils/passwordValidator'
 import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function CambiarPassword() {
   const [nuevaPassword, setNuevaPassword] = useState('')
@@ -11,25 +11,30 @@ export default function CambiarPassword() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [esObligatorio, setEsObligatorio] = useState(false)
   
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
-  // Validación en tiempo real
+  // Detectar si el cambio es obligatorio (viene de redirección del layout)
+  useEffect(() => {
+    const obligatorio = searchParams.get('obligatorio')
+    setEsObligatorio(obligatorio === 'true')
+  }, [searchParams])
+
   const passwordValidation = validatePassword(nuevaPassword)
 
   async function handleCambiarPassword(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
 
-    // Validar que las contraseñas coincidan
     if (nuevaPassword !== confirmarPassword) {
       toast.error('Las contraseñas no coinciden')
       setLoading(false)
       return
     }
 
-    // Validar requisitos de contraseña
     const validation = validatePassword(nuevaPassword)
     if (!validation.valid) {
       toast.error(validation.errors?.[0] || 'Contraseña inválida')
@@ -37,7 +42,6 @@ export default function CambiarPassword() {
       return
     }
 
-    // Obtener usuario actual
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -46,7 +50,6 @@ export default function CambiarPassword() {
       return
     }
 
-    // Llamar a la API
     const response = await fetch('/api/cambiar-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,7 +68,6 @@ export default function CambiarPassword() {
       setNuevaPassword('')
       setConfirmarPassword('')
       
-      // Redirigir directamente al dashboard (sesión mantenida)
       setTimeout(() => {
         router.push('/dashboard')
       }, 1500)
@@ -77,11 +79,14 @@ export default function CambiarPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
       <div className="max-w-md w-full">
-        <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl mb-8">
-          <p className="text-amber-800 font-medium text-center">
-            ⚠️ Estás usando una contraseña provisional. Por seguridad, debes cambiar tu contraseña.
-          </p>
-        </div>
+        {/* SOLO MOSTRAR EL CARTEL SI ES CAMBIO OBLIGATORIO */}
+        {esObligatorio && (
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl mb-8">
+            <p className="text-amber-800 font-medium text-center">
+              ⚠️ Estás usando una contraseña provisional. Por seguridad, debes cambiar tu contraseña.
+            </p>
+          </div>
+        )}
 
         <div className="bg-white p-8 rounded-3xl border shadow-sm">
           <h1 className="text-2xl font-bold text-slate-900 text-center mb-2">Cambiar Contraseña</h1>
@@ -120,7 +125,6 @@ export default function CambiarPassword() {
                 </button>
               </div>
               
-              {/* Checkmarks de validación */}
               {nuevaPassword.length > 0 && (
                 <div className="mt-3 space-y-1">
                   <p className={`text-xs flex items-center gap-2 ${nuevaPassword.length >= 6 ? 'text-green-600' : 'text-slate-400'}`}>
@@ -175,7 +179,6 @@ export default function CambiarPassword() {
                 </button>
               </div>
               
-              {/* Validación de coincidencia */}
               {confirmarPassword.length > 0 && (
                 <p className={`text-xs mt-2 flex items-center gap-2 ${nuevaPassword === confirmarPassword ? 'text-green-600' : 'text-red-500'}`}>
                   <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${nuevaPassword === confirmarPassword ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
