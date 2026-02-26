@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import toast from 'react-hot-toast'
 
@@ -10,11 +10,12 @@ interface School {
 }
 
 interface Props {
-  onUserCreated?: () => void
+  schools: School[]
+  onUserCreated: () => void
+  onCancel: () => void
 }
 
-export default function CreateUserForm({ onUserCreated }: Props) {
-  const [schools, setSchools] = useState<School[]>([])
+export default function CreateUserForm({ schools, onUserCreated, onCancel }: Props) {
   const [selectedSchool, setSelectedSchool] = useState('')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -25,44 +26,28 @@ export default function CreateUserForm({ onUserCreated }: Props) {
 
   const supabase = createClient()
 
-  // Cargar escuelas al montar
-  useEffect(() => {
-    const fetchSchools = async () => {
-      const { data, error } = await supabase
-        .from('schools')
-        .select('id, name')
-        .eq('active', true)
-        .order('name')
-
-      if (error) {
-        toast.error('Error cargando escuelas')
-        return
-      }
-      setSchools(data || [])
-    }
-    fetchSchools()
-  }, [])
-
-  // Generar contraseña automática
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
     let pass = ''
     for (let i = 0; i < 10; i++) {
       pass += chars.charAt(Math.floor(Math.random() * chars.length))
     }
-    // Asegurar al menos un número y mayúscula
-    pass = 'K' + pass.slice(1, 8) + '9'
+    pass = 'K' + pass.slice(1, 8) + '9' // asegurar formato
     setPassword(pass)
-    toast.success('Contraseña generada automáticamente')
+    toast.success('Contraseña generada')
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if(!selectedSchool || !email || !fullName || !password){
+      toast.error('Completa todos los campos por favor')
+      return
+    }
     setLoading(true)
 
     try {
-      const endpoint = role === 'directivo' 
-        ? '/api/create-directive' 
+      const endpoint = role === 'directivo'
+        ? '/api/create-directive'
         : '/api/invite-user'
 
       const response = await fetch(endpoint, {
@@ -74,25 +59,14 @@ export default function CreateUserForm({ onUserCreated }: Props) {
           role,
           schoolId: selectedSchool,
           password
-        })
+        }),
       })
 
       const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Error desconocido')
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Error al crear usuario')
-      }
-
-      toast.success(result.message)
-      
-      // Limpiar formulario
-      setFullName('')
-      setEmail('')
-      setPassword('')
-      setSelectedSchool('')
-      
-      // Notificar al padre si existe
-      if (onUserCreated) onUserCreated()
+      toast.success(result.message || 'Usuario creado con éxito')
+      onUserCreated()
 
     } catch (error: any) {
       toast.error(error.message)
@@ -102,156 +76,118 @@ export default function CreateUserForm({ onUserCreated }: Props) {
   }
 
   return (
-    <div className="bg-white p-8 rounded-3xl shadow-xl border border-blue-100">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-          <span className="text-xl">👤</span>
-        </div>
-        <div>
-          <h2 className="font-bold text-slate-800">Crear Usuario</h2>
-          <p className="text-xs text-slate-500">Asignar acceso a una institución</p>
-        </div>
+    <div className="bg-white p-6 rounded-xl border border-blue-200 shadow-lg mb-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="font-bold text-lg">Crear Nuevo Usuario</h2>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Selección de Escuela */}
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-            Institución *
-          </label>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Institución *</label>
           <select
             value={selectedSchool}
-            onChange={(e) => setSelectedSchool(e.target.value)}
-            className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+            onChange={e => setSelectedSchool(e.target.value)}
+            className="w-full p-2 border rounded-md bg-gray-50"
             required
           >
-            <option value="">-- Seleccionar Escuela --</option>
-            {schools.map((school) => (
-              <option key={school.id} value={school.id}>
-                {school.name}
-              </option>
+            <option value="">-- Seleccionar --</option>
+            {schools.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </div>
 
-        {/* Rol */}
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-            Rol del Usuario *
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { value: 'directivo', label: 'Directivo', icon: '👔' },
-              { value: 'docente', label: 'Docente', icon: '📚' },
-              { value: 'preceptor', label: 'Preceptor', icon: '📋' }
-            ].map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setRole(option.value as any)}
-                className={`p-3 rounded-xl text-sm font-bold transition-all ${
-                  role === option.value
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <span className="block text-xl mb-1">{option.icon}</span>
-                {option.label}
-              </button>
-            ))}
-          </div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Rol *</label>
+          <select
+            value={role}
+            onChange={e => setRole(e.target.value as any)}
+            className="w-full p-2 border rounded-md bg-gray-50"
+          >
+            <option value="directivo">👔 Directivo</option>
+            <option value="docente">📚 Docente</option>
+            <option value="preceptor">📋 Preceptor</option>
+          </select>
         </div>
 
-        {/* Nombre Completo */}
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-            Nombre Completo *
-          </label>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre Completo *</label>
           <input
             type="text"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={e => setFullName(e.target.value)}
             placeholder="Ej: María González"
-            className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+            className="w-full p-2 border rounded-md bg-gray-50"
             required
           />
         </div>
 
-        {/* Email */}
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-            Correo Electrónico *
-          </label>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Correo Electrónico *</label>
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="director@escuela.edu.ar"
-            className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+            onChange={e => setEmail(e.target.value)}
+            placeholder="correo@escuela.edu.ar"
+            className="w-full p-2 border rounded-md bg-gray-50"
             required
           />
         </div>
 
-        {/* Contraseña */}
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-            Contraseña Provisoria *
-          </label>
-          <div className="relative">
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Contraseña Provisoria *</label>
+          <div className="flex gap-2">
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               placeholder="Mínimo 8 caracteres"
-              className="w-full p-4 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 pr-24"
+              className="flex-1 p-2 border rounded-md bg-gray-50"
               required
-              minLength={8}
             />
             <button
               type="button"
               onClick={generatePassword}
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-bold bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+              className="px-3 py-2 bg-blue-100 text-blue-600 rounded-md text-sm font-bold hover:bg-blue-200"
             >
               Generar
             </button>
           </div>
-          <div className="mt-2 flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="showPass"
-              checked={showPassword}
-              onChange={(e) => setShowPassword(e.target.checked)}
-              className="rounded border-slate-300"
-            />
-            <label htmlFor="showPass" className="text-xs text-slate-500">
+          <div className="mt-1">
+            <label className="text-xs text-gray-500">
+              <input
+                type="checkbox"
+                checked={showPassword}
+                onChange={e => setShowPassword(e.target.checked)}
+                className="mr-1"
+              />
               Mostrar contraseña
             </label>
           </div>
         </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading || !selectedSchool || !fullName || !email || !password}
-          className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Creando usuario...
-            </span>
-          ) : (
-            `Crear ${role === 'directivo' ? 'Directivo' : role === 'docente' ? 'Docente' : 'Preceptor'}`
-          )}
-        </button>
+        <div className="col-span-full flex justify-between items-center mt-4">
+          <button
+            type="submit"
+            className="bg-blue-600 text-white py-2 px-6 rounded-md font-bold hover:bg-blue-700 disabled:opacity-50"
+            disabled={loading}
+          >
+            {loading ? 'Creando...' : 'Crear Usuario'}
+          </button>
 
-        <p className="text-xs text-center text-slate-400">
-          El usuario recibirá un email con sus credenciales
-        </p>
+          <button
+            type="button"
+            className="text-gray-600 hover:text-gray-900 font-bold"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+        </div>
       </form>
+      <p className="text-xs text-gray-400 mt-3">
+        El usuario recibirá un email con sus credenciales y deberá cambiar la contraseña al ingresar.
+      </p>
     </div>
   )
 }

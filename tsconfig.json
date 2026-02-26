@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+        "baseUrl": ".",   // 👈 ESTA LÍNEA ES LA CLAVE
+
     "target": "ES2017",
     "lib": [
       "dom",
@@ -40,3 +42,4 @@
     "node_modules"
   ]
 }
+

@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     const existingUser = userData?.users.find(u => u.email === email)
 
     if (existingUser) {
-      // Si el usuario existe, actualizamos su contraseña y perfil
+      // Si el usuario existe, actualizamos
       userId = existingUser.id
       await supabaseAdmin.auth.admin.updateUserById(userId, { 
         password,
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       userId = authData.user!.id
     }
 
-    // Crear o actualizar perfil como directivo
+    // Crear o actualizar perfil
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
@@ -100,10 +100,10 @@ export async function POST(request: Request) {
             </div>
 
             <p style="color: #dc2626; font-weight: bold; font-size: 14px;">⚠️ Acción requerida:</p>
-            <p style="margin: 0; font-size: 14px;">Al ingresar por primera vez, el sistema te solicitará obligatoriamente cambiar esta contraseña provisoria por una de tu elección por razones de seguridad.</p>
+            <p style="margin: 0; font-size: 14px;">Al ingresar por primera vez, el sistema te solicitará obligatoriamente cambiar esta contraseña provisoria por una de tu elección.</p>
 
             <div style="text-align: center; margin-top: 35px;">
-              <a href="${loginUrl}" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2);">
+              <a href="${loginUrl}" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">
                 Ingresar al Panel de Gestión →
               </a>
             </div>
