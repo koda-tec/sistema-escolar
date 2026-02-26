@@ -91,19 +91,39 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
           </div>
         </div>
 
-        {/* COLUMNA: MIS NOTAS (FEEDBACK DINÁMICO) */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm text-left">
+      {/* COLUMNA: MIS NOTAS (FEEDBACK DINÁMICO PREMIUM) */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm text-left relative overflow-hidden">
           <div className="flex items-center justify-between mb-8">
-             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Notas a Preceptoría</h3>
-             <Link href="/dashboard/comunicados/solicitud" className="text-[10px] font-black text-blue-600 uppercase underline decoration-2 underline-offset-4">Nueva Nota</Link>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">✉️</span>
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Notas a Preceptoría</h3>
+            </div>
+            <Link 
+              href="/dashboard/comunicados/solicitud" 
+              className="text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-3 py-1.5 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+            >
+              Nueva Nota +
+            </Link>
           </div>
           
           <div className="space-y-6">
             {misNotas.data?.map((nota: any) => (
-              <div key={nota.id} className="p-5 rounded-2rem bg-slate-50/50 border border-slate-100 space-y-4 transition-all hover:bg-white hover:shadow-md">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">{nota.type}</span>
-                  <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-lg shadow-sm border ${
+              <div 
+                key={nota.id} 
+                className="group relative p-6 rounded-[2.2rem] bg-white border border-slate-100 space-y-4 transition-all hover:shadow-xl hover:border-blue-100 overflow-hidden"
+              >
+                {/* Barra lateral de estado dinámica */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                  nota.status === 'pendiente' ? 'bg-red-500' :
+                  nota.status === 'leido' ? 'bg-amber-500' :
+                  'bg-emerald-500'
+                }`}></div>
+
+                <div className="flex justify-between items-center pl-2">
+                  <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 tracking-tighter">
+                    {nota.type}
+                  </span>
+                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full shadow-sm border ${
                     nota.status === 'pendiente' ? 'bg-red-500 text-white border-red-400' :
                     nota.status === 'leido' ? 'bg-amber-500 text-white border-amber-400' :
                     'bg-emerald-500 text-white border-emerald-400'
@@ -112,31 +132,50 @@ export default async function DashboardPadre({ user, profile }: { user: any, pro
                   </span>
                 </div>
                 
-                <p className="text-sm text-slate-600 italic font-medium leading-relaxed">" {nota.note} "</p>
+                <div className="pl-2">
+                  <p className="text-sm text-slate-600 italic font-medium leading-relaxed">
+                    "{nota.note}"
+                  </p>
+                </div>
 
-                {/* LA RESPUESTA: AHORA DESTACADA EN AZUL */}
+                {/* RESPUESTA DE LA ESCUELA: DISEÑO DESTACADO */}
                 {nota.response_text && (
-                  <div className="p-4 bg-blue-600 rounded-2xl text-white shadow-xl shadow-blue-200 animate-in slide-in-from-left-4">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-200 mb-1">Respuesta de la Escuela:</p>
-                    <p className="text-sm font-bold leading-tight">"{nota.response_text}"</p>
+                  <div className="ml-2 p-5 bg-blue-600 rounded-[1.8rem] text-white shadow-lg shadow-blue-900/20 animate-in slide-in-from-left-4 duration-500">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-[10px]">💬</div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.15em] text-blue-100">Respuesta de Preceptoría</p>
+                    </div>
+                    <p className="text-sm font-bold leading-snug drop-shadow-sm">
+                      {nota.response_text}
+                    </p>
+                    <p className="text-[8px] text-blue-300 mt-3 font-black uppercase tracking-widest text-right">
+                      Respondido el {new Date(nota.responded_at || nota.created_at).toLocaleDateString('es-AR')}
+                    </p>
                   </div>
                 )}
                 
-                <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest pt-2 border-t border-slate-100">
-                  Enviado el {new Date(nota.created_at).toLocaleDateString('es-AR')}
-                </p>
+                <div className="pl-2 pt-2 border-t border-slate-50 flex justify-between items-center">
+                  <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest">
+                    ID: {nota.id.slice(0, 8)}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-bold">
+                    {new Date(nota.created_at).toLocaleDateString('es-AR')}
+                  </p>
+                </div>
               </div>
             ))}
+
             {misNotas.data?.length === 0 && (
-              <div className="py-12 text-center text-slate-300 italic font-medium">No has enviado notas todavía.</div>
+              <div className="py-16 text-center space-y-4 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200">
+                <span className="text-4xl block opacity-20">📭</span>
+                <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">Sin notas enviadas</p>
+              </div>
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
+        </div>
+        </div>
+)}
 function StatCard({ title, value, sub, icon, color, isPaid }: any) {
   const colors: any = { 
     blue: "text-blue-600 bg-blue-50 border-blue-100", 
