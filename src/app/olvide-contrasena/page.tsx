@@ -1,36 +1,28 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { validatePassword } from '@/app/utils/passwordValidator'
 
-function ResetPasswordForm() {
+export default function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
-  
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
-    // Verificar si hay un token de recuperación en el hash
-    const checkHash = async () => {
-      // El hash de Supabase viene así:
-      // #access_token=xxx&refresh_token=xxx&type=recovery
-      
+    // Verificar si el token de recuperación está en el hash de la URL
+    const checkHash = () => {
       const hash = window.location.hash
-      
       if (hash.includes('access_token') && hash.includes('type=recovery')) {
-        console.log('✅ Token encontrado en el hash')
         setIsValidToken(true)
       } else {
-        console.log('❌ No hay token válido en el hash')
         setIsValidToken(false)
       }
     }
-
     checkHash()
   }, [])
 
@@ -51,7 +43,6 @@ function ResetPasswordForm() {
       return
     }
 
-    // Extraer tokens directamente del hash
     const hash = window.location.hash
     const params = new URLSearchParams(hash.substring(1))
     const accessToken = params.get('access_token')
@@ -63,30 +54,27 @@ function ResetPasswordForm() {
       return
     }
 
-    // IMPORTANTE: Primero establecer la sesión con los tokens del hash
+    // Configurar la sesión con el token para poder cambiar la contraseña
     const { data, error: sessionError } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken || ''
     })
 
     if (sessionError) {
-      console.error('Session error:', sessionError)
       toast.error('Error al procesar el enlace. Solicita uno nuevo.')
       setLoading(false)
       return
     }
 
-    // Ahora sí, cambiar la contraseña
+    // Cambiar la contraseña
     const { error } = await supabase.auth.updateUser({
       password: password
     })
 
     if (error) {
-      console.error('Update error:', error)
       toast.error('Error al cambiar la contraseña: ' + error.message)
     } else {
       toast.success('¡Contraseña actualizada correctamente!')
-      
       setTimeout(() => {
         router.push('/login')
       }, 2000)
@@ -95,7 +83,6 @@ function ResetPasswordForm() {
     setLoading(false)
   }
 
-  // Loading
   if (isValidToken === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
@@ -107,7 +94,6 @@ function ResetPasswordForm() {
     )
   }
 
-  // Token inválido
   if (isValidToken === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
@@ -117,8 +103,8 @@ function ResetPasswordForm() {
           <p className="text-slate-500 mb-6">
             El enlace de recuperación ha expirado o no es válido.
           </p>
-          <a 
-            href="/login" 
+          <a
+            href="/login"
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all"
           >
             Volver al Login
@@ -128,16 +114,13 @@ function ResetPasswordForm() {
     )
   }
 
-  // Formulario
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
       <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-2xl border">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-blue-100 rounded-2xl mx-auto flex items-center justify-center text-blue-600 text-3xl mb-4">🔑</div>
           <h2 className="text-2xl font-bold text-slate-900">Nueva Contraseña</h2>
-          <p className="text-slate-500 mt-2">
-            Ingresa tu nueva contraseña
-          </p>
+          <p className="text-slate-500 mt-2">Ingresa tu nueva contraseña</p>
         </div>
 
         <form onSubmit={handleResetPassword} className="space-y-5">
@@ -176,20 +159,4 @@ function ResetPasswordForm() {
       </div>
     </div>
   )
-}
-
-function ResetPasswordContent() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600"></div>
-      </div>
-    }>
-      <ResetPasswordForm />
-    </Suspense>
-  )
-}
-
-export default function ResetPasswordPage() {
-  return <ResetPasswordContent />
 }
