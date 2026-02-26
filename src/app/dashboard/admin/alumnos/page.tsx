@@ -72,14 +72,14 @@ export default function GestionAlumnos() {
         if (formData.parentId) {
           try {
             await fetch('/api/padres/notificar-vinculacion', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                studentId: newStudent.id,
-                studentName: formData.fullName,
-                padreId: formData.parentId
-              })
-            })
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    studentId: newStudent.id,
+    studentName: formData.fullName,
+    padreId: formData.parentId
+  })
+})
             toast.success("Notificación enviada al padre")
           } catch (err) {
             console.error('Error enviando notificación al padre:', err)
