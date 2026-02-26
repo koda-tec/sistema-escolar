@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { validatePassword } from '@/app/utils/passwordValidator'
 
@@ -12,19 +12,41 @@ export default function ResetPasswordForm() {
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Verificar si el token de recuperación está en el hash de la URL
-    const checkHash = () => {
+    const checkToken = () => {
+      let accessToken = null
+      let refreshToken = null
+      let type = null
+
       const hash = window.location.hash
-      if (hash.includes('access_token') && hash.includes('type=recovery')) {
+      const hashParams = new URLSearchParams(hash.substring(1))
+      accessToken = hashParams.get('access_token')
+      refreshToken = hashParams.get('refresh_token')
+      type = hashParams.get('type')
+
+      if (!accessToken || type !== 'recovery') {
+        const token = searchParams.get('token')
+        type = searchParams.get('type')
+        if (token && type === 'recovery') {
+          accessToken = token
+          refreshToken = searchParams.get('refresh_token')
+        }
+      }
+
+      if (accessToken && type === 'recovery') {
+        window.sessionStorage.setItem('access_token', accessToken)
+        if (refreshToken) {
+          window.sessionStorage.setItem('refresh_token', refreshToken)
+        }
         setIsValidToken(true)
       } else {
         setIsValidToken(false)
       }
     }
-    checkHash()
-  }, [])
+    checkToken()
+  }, [searchParams])
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,10 +65,23 @@ export default function ResetPasswordForm() {
       return
     }
 
-    const hash = window.location.hash
-    const params = new URLSearchParams(hash.substring(1))
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
+    let accessToken = window.sessionStorage.getItem('access_token')
+    let refreshToken = window.sessionStorage.getItem('refresh_token')
+
+    if (!accessToken) {
+      const hash = window.location.hash
+      const hashParams = new URLSearchParams(hash.substring(1))
+      accessToken = hashParams.get('access_token')
+      refreshToken = hashParams.get('refresh_token')
+    }
+
+    if (!accessToken) {
+      const token = searchParams.get('token')
+      if (token) {
+        accessToken = token
+        refreshToken = searchParams.get('refresh_token') || null
+      }
+    }
 
     if (!accessToken) {
       toast.error('Token no encontrado. Por favor, solicitá un nuevo enlace.')
@@ -54,7 +89,6 @@ export default function ResetPasswordForm() {
       return
     }
 
-    // Configurar la sesión con el token para poder cambiar la contraseña
     const { data, error: sessionError } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken || ''
@@ -66,7 +100,6 @@ export default function ResetPasswordForm() {
       return
     }
 
-    // Cambiar la contraseña
     const { error } = await supabase.auth.updateUser({
       password: password
     })
@@ -75,6 +108,8 @@ export default function ResetPasswordForm() {
       toast.error('Error al cambiar la contraseña: ' + error.message)
     } else {
       toast.success('¡Contraseña actualizada correctamente!')
+      window.sessionStorage.removeItem('access_token')
+      window.sessionStorage.removeItem('refresh_token')
       setTimeout(() => {
         router.push('/login')
       }, 2000)
