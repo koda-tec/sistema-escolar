@@ -138,7 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
                  {/* Agrega este Link nuevo: */}
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin-koda/usuarios-por-escuela" className={getLinkStyle('/dashboard/admin-koda/usuarios-por-escuela')}>
-                   <span>👥</span> Usuarios por Escuela
+                   <span>👥</span> Creación de Directivo
                 </Link>
               </>
             )}
