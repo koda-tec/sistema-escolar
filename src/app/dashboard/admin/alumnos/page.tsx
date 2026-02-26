@@ -50,18 +50,43 @@ export default function GestionAlumnos() {
         parent_id: formData.parentId
       }).eq('id', editingId)
       
-      if (!error) { toast.success("Alumno actualizado"); setEditingId(null) }
+      if (!error) { 
+        toast.success("Alumno actualizado") 
+        setEditingId(null) 
+      }
       else toast.error(error.message)
     } else {
       // CREAR
-      const { error } = await supabase.from('students').insert({
+      const { data: newStudent, error } = await supabase.from('students').insert({
         full_name: formData.fullName,
         dni: formData.dni,
         course_id: formData.courseId,
         parent_id: formData.parentId,
         school_id: profile?.school_id
-      })
-      if (!error) toast.success("Alumno registrado")
+      }).select().single()
+
+      if (!error) {
+        toast.success("Alumno registrado")
+        
+        // === ENVIAR NOTIFICACIÓN AL PADRE ===
+        if (formData.parentId) {
+          try {
+            await fetch('/api/notificaciones/vincular-padre', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                studentId: newStudent.id,
+                studentName: formData.fullName,
+                padreId: formData.parentId
+              })
+            })
+            toast.success("Notificación enviada al padre")
+          } catch (err) {
+            console.error('Error enviando notificación al padre:', err)
+          }
+        }
+        // ======================================
+      }
       else toast.error(error.message)
     }
 
