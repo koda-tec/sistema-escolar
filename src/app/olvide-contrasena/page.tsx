@@ -1,25 +1,23 @@
 'use client'
-
-export const dynamic = "force-dynamic";
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { validatePassword } from '@/app/utils/passwordValidator'
 
-export default function ResetPasswordForm() {
+function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
-
   const router = useRouter()
   const supabase = createClient()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     const checkToken = () => {
+      if (typeof window === 'undefined') return
+
       let accessToken: string | null = null
       let refreshToken: string | null = null
       let type: string | null = null
@@ -72,21 +70,26 @@ export default function ResetPasswordForm() {
       return
     }
 
-    let accessToken = window.sessionStorage.getItem('access_token')
-    let refreshToken = window.sessionStorage.getItem('refresh_token')
+    let accessToken: string | null = null
+    let refreshToken: string | null = null
 
-    if (!accessToken) {
-      const hash = window.location.hash
-      const hashParams = new URLSearchParams(hash.substring(1))
-      accessToken = hashParams.get('access_token')
-      refreshToken = hashParams.get('refresh_token')
-    }
+    if (typeof window !== 'undefined') {
+      accessToken = window.sessionStorage.getItem('access_token')
+      refreshToken = window.sessionStorage.getItem('refresh_token')
 
-    if (!accessToken) {
-      const token = searchParams.get('token')
-      if (token) {
-        accessToken = token
-        refreshToken = searchParams.get('refresh_token') || null
+      if (!accessToken) {
+        const hash = window.location.hash
+        const hashParams = new URLSearchParams(hash.substring(1))
+        accessToken = hashParams.get('access_token')
+        refreshToken = hashParams.get('refresh_token')
+      }
+
+      if (!accessToken) {
+        const token = searchParams.get('token')
+        if (token) {
+          accessToken = token
+          refreshToken = searchParams.get('refresh_token') || null
+        }
       }
     }
 
@@ -115,9 +118,10 @@ export default function ResetPasswordForm() {
       toast.error('Error al cambiar la contraseña: ' + error.message)
     } else {
       toast.success('¡Contraseña actualizada correctamente!')
-      window.sessionStorage.removeItem('access_token')
-      window.sessionStorage.removeItem('refresh_token')
-
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('access_token')
+        window.sessionStorage.removeItem('refresh_token')
+      }
       setTimeout(() => {
         router.push('/login')
       }, 2000)
@@ -201,5 +205,21 @@ export default function ResetPasswordForm() {
         </form>
       </div>
     </div>
+  )
+}
+
+function Loading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+    </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }
