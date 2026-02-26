@@ -1,6 +1,6 @@
 import { createClient } from "@/app/utils/supabase/server";
 import InstallPWA from "../components/InstallPWA";
-
+import PushNotif from "../components/PushNotif";
 // Importamos los componentes de Dashboard por rol (que crearemos abajo)
 import DashboardPadre from "../components/dashboards/DashboardPadre";
 import DashboardDirectivo from "../components/dashboards/DashboardDirectivo";
@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <InstallPWA />
-      
+      <PushNotif />
       <header className="flex flex-col gap-1">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">
           Hola, {profile.full_name?.split(' ')[0]} 👋
