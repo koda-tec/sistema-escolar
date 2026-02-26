@@ -32,10 +32,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setProfile(profileData)
       setLoading(false)
 
-      // Control de cambio de contraseña para personal y directivo
+      // Control de cambio de contraseña obligatorio para roles
       const rol = profileData?.role?.toLowerCase().trim()
-      const debeCambiarPassword = rol === 'preceptor' || rol === 'docente' || rol === 'directivo'
-      
+      const debeCambiarPassword = ['preceptor', 'docente', 'directivo', 'padre'].includes(rol)
       const isChangingPassPage = pathname.startsWith('/dashboard/perfil/cambiar-password')
       
       if (profileData?.must_change_password && debeCambiarPassword && !isChangingPassPage) {
@@ -50,12 +49,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  // NORMALIZACIÓN DE VARIABLES
+  // Variables normalizadas y estados
   const userRole = profile?.role?.toLowerCase().trim() || ''
   const isPaid = profile?.subscription_active === true
   const hasSchool = !!profile?.school_id
   const brandName = profile?.schools?.name || "KodaEd"
-  
   const mustChangePassword = profile?.must_change_password && ['preceptor', 'docente', 'directivo', 'padre'].includes(userRole)
 
   const getLinkStyle = (path: string, isLocked: boolean = false) => {
@@ -173,40 +171,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </>
             )}
 
-            {/* ROL: PADRE (CON BLOQUEO DE CLIC) */}
+            {/* PADRE */}
             {userRole === 'padre' && (
               <>
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-[0.2em] flex justify-between items-center">
-                  Familia {!isPaid && <span className="text-amber-500 text-[8px]">LIMITADO</span>}
+                   Familia {!isPaid && <span className="text-amber-500 text-[8px]">LIMITADO</span>}
                 </div>
-                
-                {/* Link Mis Hijos */}
-                {!isPaid ? (
-                  <div className={getLinkStyle('/dashboard/hijos', true)}>
-                    <span className="flex items-center justify-between w-full opacity-50 cursor-not-allowed">
-                      <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
-                      <span className="text-xs">🔒</span>
-                    </span>
-                  </div>
-                ) : (
-                  <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={getLinkStyle('/dashboard/hijos')}>
-                    <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
-                  </Link>
-                )}
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={getLinkStyle('/dashboard/hijos', !isPaid)}>
+                   <span className="flex items-center justify-between w-full">
+                     <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
+                     {!isPaid && <span className="text-xs">🔒</span>}
+                   </span>
+                </Link>
+              </>
+            )}
 
-                {/* Link Comunicados */}
-                {!isPaid ? (
-                  <div className={getLinkStyle('/dashboard/comunicados', true)}>
-                    <span className="flex items-center justify-between w-full opacity-50 cursor-not-allowed">
-                      <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
-                      <span className="text-xs">🔒</span>
-                    </span>
-                  </div>
-                ) : (
-                  <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={getLinkStyle('/dashboard/comunicados')}>
-                    <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
-                  </Link>
-                )}
+            {/* COMUNICADOS (Para todos los que tengan un rol asignado) */}
+            {(hasSchool || userRole === 'padre' || userRole === 'admin_koda') && (
+              <>
+                <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">Social</div>
+                <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={getLinkStyle('/dashboard/comunicados', userRole === 'padre' && !isPaid)}>
+                   <span className="flex items-center justify-between w-full">
+                     <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
+                     {userRole === 'padre' && !isPaid && <span className="text-xs">🔒</span>}
+                   </span>
+                </Link>
               </>
             )}
           </nav>
