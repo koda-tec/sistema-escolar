@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  
+
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
@@ -32,11 +32,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setProfile(profileData)
       setLoading(false)
 
-      // Control de cambio de contraseña obligatorio para roles
       const rol = profileData?.role?.toLowerCase().trim()
-      const debeCambiarPassword = ['preceptor', 'docente', 'directivo'].includes(rol)
+      const debeCambiarPassword = ['preceptor', 'docente', 'directivo', 'padre'].includes(rol)
       const isChangingPassPage = pathname.startsWith('/dashboard/perfil/cambiar-password')
-      
+
       if (profileData?.must_change_password && debeCambiarPassword && !isChangingPassPage) {
         router.push('/dashboard/perfil/cambiar-password')
       }
@@ -59,17 +58,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const getLinkStyle = (path: string, isLocked: boolean = false) => {
     const isActive = pathname === path
     return `${linkStyle} ${
-      isActive 
-        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 opacity-100 scale-[1.02]' 
+      isActive
+        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 opacity-100 scale-[1.02]'
         : isLocked
-          ? 'text-slate-600 opacity-60 italic' 
+          ? 'text-slate-600 opacity-60 italic'
           : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
     }`
   }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950">
-       <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600"></div>
     </div>
   )
 
@@ -83,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-slate-900 overflow-x-hidden">
-      
+
       {/* NAVBAR MÓVIL (HEADER) */}
       <header className="md:hidden bg-slate-950 text-white px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] flex justify-between items-center sticky top-0 z-60 border-b border-white/5 shadow-2xl">
         <div className="flex items-center gap-3">
@@ -95,7 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </h2>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => setSidebarOpen(!isSidebarOpen)}
           className="w-11 h-11 flex items-center justify-center bg-slate-900 border border-white/10 rounded-2xl text-white active:scale-90 transition-all"
         >
@@ -110,33 +109,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full border-r border-white/5">
-          
+
           {/* Logo Desktop */}
           <div className="p-8 hidden md:block text-left">
             <div className="flex items-center gap-3 mb-6 font-black text-xl tracking-tighter uppercase italic text-white">
-               Koda<span className="text-blue-600 font-black">Ed</span>
+              Koda<span className="text-blue-600 font-black">Ed</span>
             </div>
             <div className="p-4 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-sm">
-                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 text-left">SaaS Node</p>
-                <p className="text-sm font-bold text-slate-200 truncate text-left">{brandName}</p>
+              <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 text-left">SaaS Node</p>
+              <p className="text-sm font-bold text-slate-200 truncate text-left">{brandName}</p>
             </div>
           </div>
 
           <nav className="flex-1 px-4 space-y-2 overflow-y-auto pt-28 md:pt-0 custom-scrollbar text-left">
-            
+
             <Link onClick={() => setSidebarOpen(false)} href="/dashboard" className={getLinkStyle('/dashboard')}>
               <span className="flex items-center gap-3"><span>🏠</span> Inicio</span>
             </Link>
-            
+
             {/* ADMIN KODA */}
             {userRole === 'admin_koda' && (
               <>
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">SaaS Master</div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin-koda" className={getLinkStyle('/dashboard/admin-koda')}>
-                   <span>🏢</span> Gestión Escuelas
+                  <span>🏢</span> Gestión Escuelas
                 </Link>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/admin-koda/usuarios-por-escuela" className={getLinkStyle('/dashboard/admin-koda/usuarios-por-escuela')}>
-                   <span>👥</span> Creación de Directivo
+                  <span>👥</span> Creación de Directivo
                 </Link>
               </>
             )}
@@ -175,13 +174,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {userRole === 'padre' && (
               <>
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-[0.2em] flex justify-between items-center">
-                   Familia {!isPaid && <span className="text-amber-500 text-[8px]">LIMITADO</span>}
+                  Familia {!isPaid && <span className="text-amber-500 text-[8px]">LIMITADO</span>}
                 </div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/hijos" className={getLinkStyle('/dashboard/hijos', !isPaid)}>
-                   <span className="flex items-center justify-between w-full">
-                     <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
-                     {!isPaid && <span className="text-xs">🔒</span>}
-                   </span>
+                  <span className="flex items-center justify-between w-full">
+                    <span className="flex items-center gap-3"><span>👨‍🎓</span> Mis Hijos</span>
+                    {!isPaid && <span className="text-xs">🔒</span>}
+                  </span>
                 </Link>
               </>
             )}
@@ -191,16 +190,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <>
                 <div className="pt-6 pb-2 text-[10px] uppercase text-slate-600 font-black px-4 tracking-widest">Social</div>
                 <Link onClick={() => setSidebarOpen(false)} href="/dashboard/comunicados" className={getLinkStyle('/dashboard/comunicados', userRole === 'padre' && !isPaid)}>
-                   <span className="flex items-center justify-between w-full">
-                     <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
-                     {userRole === 'padre' && !isPaid && <span className="text-xs">🔒</span>}
-                   </span>
+                  <span className="flex items-center justify-between w-full">
+                    <span className="flex items-center gap-3"><span>📩</span> Comunicados</span>
+                    {userRole === 'padre' && !isPaid && <span className="text-xs">🔒</span>}
+                  </span>
                 </Link>
               </>
             )}
           </nav>
 
-          {/* User Profile Area */}
+          {/* Área perfil y cerrar sesión */}
           <div className="p-4 mt-auto mb-[env(safe-area-inset-bottom,1.5rem)] text-left">
             <div className="bg-white/5 rounded-2rem p-4 border border-white/5 shadow-inner">
               <div className="flex items-center gap-3 mb-4">
@@ -215,7 +214,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                 </div>
               </div>
-              <button 
+
+              {/* Botón Cambiar Contraseña */}
+              <Link
+                href="/dashboard/perfil/cambiar-password"
+                className="w-full mb-3 inline-block bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 font-bold text-center uppercase transition"
+              >
+                Cambiar Contraseña
+              </Link>
+
+              <button
                 onClick={handleSignOut}
                 className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-red-500/20 active:scale-95 transition-all"
               >
@@ -226,12 +234,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* OVERLAY */}
+      {/* Overlay */}
       {isSidebarOpen && (
         <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden transition-all duration-500"></div>
       )}
 
-      {/* CONTENIDO PRINCIPAL */}
+      {/* Contenido principal */}
       <main className="flex-1 p-4 md:p-10 lg:p-12 overflow-x-hidden min-h-screen">
         <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-1000">
           {children}
