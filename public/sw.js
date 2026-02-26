@@ -8,25 +8,36 @@ if(!self.define){let e,a={};const s=(s,n)=>(s=new URL(s+".js",n).href,a[s]||new 
 // --- LÓGICA DE NOTIFICACIONES PUSH ---
 
 self.addEventListener('push', function (event) {
-  let data = { title: 'Aviso Escolar', body: 'Tienes una nueva notificación' };
+  console.log('☁️ Push recibida...');
   
-  if (event.data) {
-    try {
+  let data = { 
+    title: 'Aviso de KodaEd', 
+    body: 'Tenés una nueva notificación de la escuela.' 
+  };
+
+  try {
+    if (event.data) {
+      // Intentamos procesar el mensaje que mandó el servidor
       data = event.data.json();
-    } catch (e) {
-      // Si no es JSON, quizás es texto plano
-      data.body = event.data.text();
+    }
+  } catch (e) {
+    console.error("Error parseando el JSON del push:", e);
+    // Si falla el JSON, intentamos leerlo como texto plano
+    if (event.data) {
+        data = { title: 'KodaEd', body: event.data.text() };
     }
   }
 
   const options = {
     body: data.body,
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-192x192.png',
+    icon: '/icons/icon-192x192.png', // Logo de KodaEd
+    badge: '/icons/icon-192x192.png', // Icono chiquito para la barra de estado
     vibrate: [200, 100, 200],
-    tag: 'inasistencia-tag', // Evita que se amontonen si llegan varias
+    tag: 'inasistencia-notif', // Evita que se amontonen mil notificaciones
     renotify: true,
-    data: { url: data.url || '/dashboard' }
+    data: {
+      url: data.url || '/dashboard'
+    }
   };
 
   event.waitUntil(
