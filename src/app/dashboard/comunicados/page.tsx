@@ -33,8 +33,6 @@ export default function ComunicadosPage() {
       setProfile(profData)
       if (!profData) return
 
-      // 1. CARGAR COMUNICADOS OFICIALES (Filtrados por RLS en la DB)
-      // Solo cargamos si no es un padre bloqueado (para ahorrar recursos)
       if (profData.role !== 'padre' || profData.subscription_active) {
         const { data: comms } = await supabase
           .from('communications')
@@ -44,7 +42,6 @@ export default function ComunicadosPage() {
         setComunicados(comms || [])
       }
 
-      // 2. LÓGICA PRECEPTOR: Cargar Notas de Padres de sus cursos
       if (profData.role?.toLowerCase() === 'preceptor') {
         const { data: asignaciones } = await supabase
           .from('preceptor_courses')
@@ -85,21 +82,41 @@ export default function ComunicadosPage() {
     }
   }
 
+  // --- FUNCIÓN ACTUALIZADA CON NOTIFICACIÓN ---
   const handleJustificarFalta = async (nota: any) => {
     const fechaNota = new Date(nota.created_at).toISOString().split('T')[0]
-    const { data, error } = await supabase
-      .from('attendance')
-      .update({ status: 'justificado' })
-      .eq('student_id', nota.student_id)
-      .eq('date', fechaNota)
-      .select()
+    
+    try {
+      // 1. Actualizar asistencia
+      const { data, error } = await supabase
+        .from('attendance')
+        .update({ status: 'justificado' })
+        .eq('student_id', nota.student_id)
+        .eq('date', fechaNota)
+        .select()
 
-    if (error || data.length === 0) {
-      toast.error("No se encontró inasistencia oficial para esta fecha")
-    } else {
+      if (error || !data || data.length === 0) {
+        throw new Error("No se encontró inasistencia oficial para esta fecha")
+      }
+
+      // 2. Marcar nota como respondida
       await supabase.from('parent_requests').update({ status: 'respondido' }).eq('id', nota.id)
-      toast.success("Falta justificada correctamente")
+
+      // 3. DISPARAR NOTIFICACIÓN DUAL (Email + Push)
+      await fetch('/api/solicitudes/notificar-justificacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          studentId: nota.student_id, 
+          parentId: nota.parent_id,
+          date: fechaNota 
+        })
+      })
+
+      toast.success("Falta justificada y padre notificado")
       fetchData()
+    } catch (err: any) {
+      toast.error(err.message || "Error al justificar")
     }
   }
 
@@ -143,7 +160,6 @@ export default function ComunicadosPage() {
     </div>
   )
 
-  // --- CONTROL DE ACCESO (PAYWALL) ---
   const userRole = profile?.role?.toLowerCase().trim()
   const isPaid = profile?.subscription_active === true
   
@@ -153,11 +169,10 @@ export default function ComunicadosPage() {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20 text-left font-sans text-slate-900">
-      
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-left">
           <h1 className="text-3xl font-black tracking-tight uppercase italic leading-none">Comunicación</h1>
-          <p className="text-slate-500 font-medium mt-2">Bandeja de mensajes y avisos oficiales.</p>
+          <p className="text-slate-500 font-medium mt-2 text-left">Bandeja de mensajes y avisos oficiales.</p>
         </div>
         
         {['directivo', 'docente', 'preceptor', 'admin_koda'].includes(userRole) && (
@@ -173,15 +188,14 @@ export default function ComunicadosPage() {
         )}
       </header>
 
-      {/* SECCIÓN PRECEPTOR: NOTAS DE PADRES */}
       {userRole === 'preceptor' && (
         <section className="space-y-6">
           <div className="flex items-center justify-between ml-2">
              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-amber-200 text-white">📥</div>
-                <h2 className="text-xl font-black uppercase tracking-tighter">Notas de Padres</h2>
+                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-amber-200 text-white font-black">📥</div>
+                <h2 className="text-xl font-black uppercase tracking-tighter text-left">Notas de Padres</h2>
              </div>
-             <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase">
+             <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
                {notasPadres.length} Pendientes
              </span>
           </div>
@@ -192,9 +206,9 @@ export default function ComunicadosPage() {
                 <div key={nota.id} className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-200 shadow-sm transition-all hover:shadow-md relative overflow-hidden group">
                   <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${nota.status === 'pendiente' ? 'bg-red-500' : 'bg-green-500'}`}></div>
 
-                  <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-6 text-left">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
-                      <div className="space-y-1">
+                      <div className="space-y-1 text-left">
                         <div className="flex items-center gap-2">
                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
                             nota.type === 'inasistencia' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-blue-50 text-blue-600 border border-blue-100'
@@ -205,10 +219,10 @@ export default function ComunicadosPage() {
                             {new Date(nota.created_at).toLocaleString('es-AR')}
                           </span>
                         </div>
-                        <p className="text-lg font-bold text-slate-900 leading-tight">"{nota.note}"</p>
+                        <p className="text-lg font-bold text-slate-900 leading-tight text-left">"{nota.note}"</p>
                       </div>
 
-                      <div className="flex flex-col md:items-end gap-1 text-left md:text-right">
+                      <div className="flex flex-col md:items-end gap-1 text-left">
                          <p className="text-xs font-black text-slate-900 notranslate">{nota.profiles?.full_name}</p>
                          <p className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter italic leading-none">
                            Tutor de: {nota.students?.full_name} ({nota.students?.courses?.name})
@@ -218,13 +232,13 @@ export default function ComunicadosPage() {
 
                     {nota.response_text && (
                       <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 animate-in fade-in zoom-in text-left">
-                        <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Tu Respuesta:</p>
-                        <p className="text-sm text-slate-700 font-medium italic leading-relaxed">"{nota.response_text}"</p>
+                        <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1 text-left">Tu Respuesta:</p>
+                        <p className="text-sm text-slate-700 font-medium italic leading-relaxed text-left">"{nota.response_text}"</p>
                       </div>
                     )}
 
                     {!nota.response_text && (
-                      <div className="space-y-4 pt-2">
+                      <div className="space-y-4 pt-2 text-left">
                         <textarea
                           value={respuestas[nota.id] || ''}
                           onChange={(e) => setRespuestas({ ...respuestas, [nota.id]: e.target.value })}
@@ -267,17 +281,16 @@ export default function ComunicadosPage() {
         </section>
       )}
 
-      {/* SECCIÓN GENERAL: CANAL OFICIAL */}
       <section className="space-y-6 pt-10 border-t border-slate-100 text-left">
-        <div className="flex items-center gap-3 ml-2">
+        <div className="flex items-center gap-3 ml-2 text-left">
              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-200 text-white font-black">📣</div>
              <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Canal Oficial</h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-4 text-left">
           {comunicados.map((c) => (
             <Link key={c.id} href={`/dashboard/comunicados/${c.id}`} className="bg-white p-7 rounded-[2.5rem] border border-slate-200 hover:border-blue-500 hover:shadow-xl transition-all group flex justify-between items-center text-left">
-              <div className="space-y-2">
+              <div className="space-y-2 text-left">
                 <h3 className="text-xl font-black group-hover:text-blue-600 transition-colors leading-none italic text-slate-900">{c.title}</h3>
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] leading-none">
                   {new Date(c.created_at).toLocaleDateString('es-AR')} • Por {c.profiles?.full_name}
@@ -286,7 +299,6 @@ export default function ComunicadosPage() {
               <span className="text-slate-300 group-hover:text-blue-600 transition-all text-2xl group-hover:translate-x-1 duration-300">➜</span>
             </Link>
           ))}
-          {comunicados.length === 0 && <p className="p-10 text-center text-slate-400 font-bold uppercase text-[10px]">Sin anuncios publicados.</p>}
         </div>
       </section>
     </div>
