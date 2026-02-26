@@ -11,34 +11,41 @@ clientsClaim();
 self.skipWaiting();
 
 // ESCUCHADOR DE PUSH (Tu código está perfecto, mantenelo así)
-self.addEventListener('push', (event: PushEvent) => {
-  let data = {
-    title: 'KodaEd',
-    body: 'Tienes una nueva notificación.',
-    url: '/dashboard'
-  };
+self.addEventListener('push', (event: any) => {
+  // 1. Valores por defecto (si esto falla, al menos verás esto y no algo genérico)
+  let title = '⚠️ Aviso de KodaEd';
+  let body = 'Tienes una nueva novedad escolar.';
+  let url = '/dashboard';
 
-  if (event.data) {
-    try {
+  try {
+    if (event.data) {
+      // 2. Intentamos parsear. Ojo: event.data.json() puede fallar si no es JSON.
       const payload = event.data.json();
-      data = { ...data, ...payload };
-    } catch (e) {
-      data.body = event.data.text();
+      title = payload.title || title;
+      body = payload.body || body;
+      url = payload.url || url;
     }
+  } catch (e) {
+    // 3. Si falló el JSON, probamos leerlo como texto plano
+    console.warn("Fallo el JSON, leyendo texto plano");
+    const text = event.data.text();
+    if (text) body = text;
   }
 
-  const options: any = {
-    body: data.body,
+    const options = {
+    body,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
-    vibrate: [100, 50, 100],
-    data: { url: data.url },
+    vibrate: [200, 100, 200], 
     tag: 'kodaed-notification',
-    renotify: true
+    renotify: true,
+    data: { url }
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
+
 
 // ESCUCHADOR DE CLIC
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
