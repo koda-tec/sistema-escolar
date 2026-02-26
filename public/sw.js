@@ -9,47 +9,46 @@ if(!self.define){let e,a={};const s=(s,n)=>(s=new URL(s+".js",n).href,a[s]||new 
  * Esta parte escucha los mensajes del servidor.
  */
 self.addEventListener('push', function (event) {
-  console.log('☁️ Push recibida en Android...');
+  console.log('☁️ Push recibida en el dispositivo...');
   
+  // Valores por defecto por si falla el parseo
   let data = { 
     title: 'Aviso de KodaEd', 
-    body: 'Tenés una nueva notificación de la escuela.' 
+    body: 'Tienes una nueva notificación de la escuela.',
+    url: '/dashboard'
   };
 
-  try {
-    if (event.data) {
-      data = event.data.json();
-    }
-  } catch (e) {
-    if (event.data) {
-        data = { title: 'KodaEd', body: event.data.text() };
+  if (event.data) {
+    try {
+      // Intentamos leer el JSON enviado desde el servidor
+      const payload = event.data.json();
+      data.title = payload.title || data.title;
+      data.body = payload.body || data.body;
+      data.url = payload.url || data.url;
+    } catch (e) {
+      console.warn("⚠️ No se pudo parsear el JSON, usando texto plano o default");
+      const text = event.data.text();
+      if (text) data.body = text;
     }
   }
 
   const options = {
     body: data.body,
-    icon: '/icons/icon-192x192.png',
+    icon: '/icons/icon-192x192.png', // Asegúrate de que esta ruta sea correcta
     badge: '/icons/icon-192x192.png',
     vibrate: [200, 100, 200],
-    tag: 'inasistencia-notif',
+    tag: 'inasistencia-notif', // Agrupa notificaciones iguales
     renotify: true,
     data: {
-      url: data.url || '/dashboard'
-    }
+      url: data.url
+    },
+    // Esto hace que la notificación se vea más "nativa" en Android
+    actions: [
+      { action: 'open', title: 'Ver detalle' }
+    ]
   };
 
   event.waitUntil(
     self.registration.showNotification(data.title, options)
-  );
-});
-
-/**
- * AL HACER CLIC EN LA NOTIFICACIÓN
- * Abre la app en la página correspondiente (ej: la asistencia del hijo).
- */
-self.addEventListener('notificationclick', function (event) {
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow(event.notification.data.url)
   );
 });
