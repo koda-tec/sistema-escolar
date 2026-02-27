@@ -17,22 +17,25 @@ export default function ResetPasswordContent() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const checkToken = () => {
-      const hash = window.location.hash
-      const hashParams = new URLSearchParams(hash.substring(1))
-      
-      const accessToken = hashParams.get('access_token') || searchParams.get('token')
-      const type = hashParams.get('type') || searchParams.get('type')
+  const checkToken = () => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+    const queryParams = new URLSearchParams(window.location.search)
 
-      if (accessToken && (type === 'recovery' || hash.includes('type=recovery'))) {
-        window.sessionStorage.setItem('access_token', accessToken)
-        setIsValidToken(true)
-      } else {
-        setIsValidToken(false)
-      }
+    const accessToken =
+      hashParams.get('access_token') || queryParams.get('access_token')
+    const type =
+      hashParams.get('type') || queryParams.get('type')
+
+    if (accessToken && type === 'recovery') {
+      window.sessionStorage.setItem('access_token', accessToken)
+      setIsValidToken(true)
+    } else {
+      setIsValidToken(false)
     }
-    checkToken()
-  }, [searchParams])
+  }
+
+  checkToken()
+}, [])
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
