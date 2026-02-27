@@ -41,3 +41,9 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+/* Puedes añadir a tu CSS global o probar en consola */
+table th:last-child, table td:last-child {
+  min-width: 80px;      /* Ancho mínimo para columna acciones */
+  text-align: right;    /* Alinear a la derecha */
+  white-space: nowrap;  /* Evitar salto de línea */
+}

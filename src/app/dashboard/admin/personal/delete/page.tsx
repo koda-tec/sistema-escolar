@@ -117,38 +117,38 @@ export default function GestionPersonal() {
       <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden mt-8">
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-600px">
-            <thead className="bg-slate-50 border-b text-[11px] uppercase text-slate-900 font-black">
-              <tr>
-                <th className="p-4 md:p-6">Nombre</th>
-                <th className="p-4 md:p-6">Email</th>
-                <th className="p-4 md:p-6">Rol</th>
-                <th className="p-4 md:p-6">Estado</th>
-                <th className="p-4 md:p-6 text-right">Acciones</th> {/* <== Columna de acciones */}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {personal.map(p => (
-                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 md:p-6 font-bold text-slate-900">{p.full_name || 'Sin nombre'}</td>
-                  <td className="p-4 md:p-6 text-slate-600">{p.email}</td>
-                  <td className="p-4 md:p-6">
-                    <span className={`px-2 py-1 rounded-lg text-xs font-bold uppercase ${
-                      p.role === 'preceptor' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-                    }`}>{p.role}</span>
-                  </td>
-                  <td className="p-4 md:p-6"><span className="text-green-600 font-medium">✓ Activo</span></td>
-                  <td className="p-4 md:p-6 text-right">
-                    <button
-                      onClick={() => handleDelete(p.id, p.full_name)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                      title="Eliminar usuario"
-                    >
-                      🗑️
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+           <thead>
+  <tr>
+    <th className="p-4 md:p-6">Nombre</th>
+    <th className="p-4 md:p-6">Email</th>
+    <th className="p-4 md:p-6">Rol</th>
+    <th className="p-4 md:p-6">Estado</th>
+    <th className="p-4 md:p-6 text-right min-w-[80px]">Acciones</th>
+  </tr>
+</thead>
+<tbody>
+  {personal.map(p => (
+    <tr key={p.id}>
+      <td className="p-4 md:p-6 font-bold text-slate-900">{p.full_name || 'Sin nombre'}</td>
+      <td className="p-4 md:p-6 text-slate-600">{p.email}</td>
+      <td className="p-4 md:p-6">
+        <span className={`px-2 py-1 rounded-lg text-xs font-bold uppercase ${
+          p.role === 'preceptor' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+        }`}>{p.role}</span>
+      </td>
+      <td className="p-4 md:p-6"><span className="text-green-600 font-medium">✓ Activo</span></td>
+      <td className="p-4 md:p-6 text-right min-w-[80px]">
+        <button
+          onClick={() => handleDelete(p.id, p.full_name)}
+          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+          title="Eliminar usuario"
+        >
+          🗑️
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
           </table>
         </div>
         {personal.length === 0 && (
