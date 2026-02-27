@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 
 const linkStyle = "flex items-center gap-3 p-3 rounded-xl transition-all text-sm font-bold w-full "
 
@@ -23,11 +24,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (authError || !user) return router.push('/login')
       setUser(user)
 
+      // IMPORTANTE: Seleccionamos 'active' de la escuela para verificar el estado
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('*, schools(name, logo_url)')
+        .select('*, schools(id, name, logo_url, active)')
         .eq('id', user.id)
         .maybeSingle()
+
+      // --- BLOQUEO DE ESCUELA INHABILITADA ---
+      if (profileData?.school_id) {
+        // Si el usuario tiene escuela y esta está inactiva (active === false)
+        if (profileData.schools && profileData.schools.active === false) {
+          toast.error('Tu institución está temporalmente inhábil. Contacta a KodaEd.')
+          await supabase.auth.signOut()
+          router.push('/login')
+          return // Detenemos la ejecución
+        }
+      }
+      // --------------------------------------
 
       setProfile(profileData)
       setLoading(false)
@@ -219,7 +233,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* Botón Cambiar Contraseña */}
               <Link
                 href="/dashboard/perfil/cambiar-password"
-                className="w-full mb-2 inline-block bg-blue-600 hover:bg-blue-700 text-white               rounded-lg py-2 font-semibold text-sm text-center uppercase transition"
+                className="w-full mb-2 inline-block bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 font-semibold text-sm text-center uppercase transition"
               >
                 Cambiar Contraseña
               </Link>

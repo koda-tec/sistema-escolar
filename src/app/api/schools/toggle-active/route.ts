@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/app/utils/supabase/server'
+import { getSupabaseAdmin } from '@/app/utils/supabase/admin'
 
 export async function POST(request: Request) {
   try {
     const { id, active } = await request.json()
-    if (!id || active === undefined) {
-      return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
+    
+    // Validación robusta: Verificamos que 'active' sea explícitamente booleano
+    if (!id || typeof active !== 'boolean') {
+      return NextResponse.json({ error: 'Faltan datos válidos (id o estado activo)' }, { status: 400 })
     }
 
-    const supabase = await createClient()
-    const { error } = await supabase.from('schools').update({ active }).eq('id', id)
+    const supabaseAdmin = getSupabaseAdmin()
+    const { error } = await supabaseAdmin.from('schools').update({ active }).eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
