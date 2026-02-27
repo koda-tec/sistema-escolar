@@ -4,11 +4,11 @@ import { createClient } from '@/app/utils/supabase/client'
 import toast from 'react-hot-toast'
 
 export default function GestionPersonal() {
+  // Estados
   const [personal, setPersonal] = useState<any[]>([])
   const [cursosDisponibles, setCursosDisponibles] = useState<any[]>([])
   const [cursosSeleccionados, setCursosSeleccionados] = useState<string[]>([])
 
-  // Campos para crear nuevo personal
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<'preceptor' | 'docente'>('docente')
@@ -17,6 +17,7 @@ export default function GestionPersonal() {
 
   const supabase = createClient()
 
+  // Carga inicial de datos
   useEffect(() => {
     fetchInitialData()
   }, [])
@@ -51,7 +52,6 @@ export default function GestionPersonal() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-
     const { data: { user } } = await supabase.auth.getUser()
     const { data: directorProfile } = await supabase.from('profiles').select('school_id').eq('id', user?.id).maybeSingle()
 
@@ -73,19 +73,19 @@ export default function GestionPersonal() {
         assignedCourses: role === 'preceptor' ? cursosSeleccionados : []
       })
     })
-
     const result = await response.json()
 
-    if (result.error) toast.error(result.error)
-    else {
+    if (result.error) {
+      toast.error(result.error)
+    } else {
       toast.success(result.message)
       setEmail(''); setFullName(''); setPassword(''); setCursosSeleccionados([])
       fetchInitialData()
     }
-
     setLoading(false)
   }
 
+  // Función eliminar usuario (llama API segura)
   async function handleDelete(userId: string, userName: string) {
     if (!confirm(`¿Estás seguro de eliminar a ${userName}? Esta acción no se puede deshacer.`)) return
 
@@ -108,9 +108,9 @@ export default function GestionPersonal() {
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Gestión de Personal</h1>
 
-      {/* Formulario para Crear Miembro */}
+      {/* Formulario creación */}
       <form onSubmit={handleCreate} className="bg-white p-5 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-200 space-y-6">
-        {/* ... tu formulario aquí (igual que antes) ... */}
+        {/* ... Campos y lógica igual a la que tienes ... */}
       </form>
 
       {/* Tabla con botón eliminar */}
@@ -123,7 +123,7 @@ export default function GestionPersonal() {
                 <th className="p-4 md:p-6">Email</th>
                 <th className="p-4 md:p-6">Rol</th>
                 <th className="p-4 md:p-6">Estado</th>
-                <th className="p-4 md:p-6 text-right">Acciones</th>
+                <th className="p-4 md:p-6 text-right">Acciones</th> {/* <== Columna de acciones */}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
