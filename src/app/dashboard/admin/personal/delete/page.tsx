@@ -8,13 +8,13 @@ export default function GestionPersonal() {
   const [personal, setPersonal] = useState<any[]>([])
   const [cursosDisponibles, setCursosDisponibles] = useState<any[]>([])
   const [cursosSeleccionados, setCursosSeleccionados] = useState<string[]>([])
-  
+
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<'preceptor' | 'docente'>('docente')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  
+
   const supabase = createClient()
 
   // --- CARGA DE DATOS ---
@@ -46,14 +46,14 @@ export default function GestionPersonal() {
     setCursosDisponibles(curs || [])
   }
 
-  // --- LÓGICA DE SELECCIÓN ---
+  // --- LÓGICA DE SELECCIÓN CURSOS ---
   const toggleCurso = (id: string) => {
-    setCursosSeleccionados(prev => 
+    setCursosSeleccionados(prev =>
       prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
     )
   }
 
-  // --- ACCIÓN DE CREAR ---
+  // --- CREAR NUEVO MIEMBRO ---
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -76,7 +76,7 @@ export default function GestionPersonal() {
         role,
         schoolId: directorProfile.school_id,
         password,
-        assignedCourses: role === 'preceptor' ? cursosSeleccionados : [] 
+        assignedCourses: role === 'preceptor' ? cursosSeleccionados : []
       })
     })
 
@@ -96,7 +96,7 @@ export default function GestionPersonal() {
     setLoading(false)
   }
 
-  // --- NUEVA FUNCIÓN: ELIMINAR PERSONAL ---
+  // --- ELIMINAR MIEMBRO ---
   async function handleDelete(userId: string, userName: string) {
     if (!confirm(`¿Estás seguro de eliminar a ${userName}? Esta acción no se puede deshacer.`)) return
 
@@ -112,7 +112,7 @@ export default function GestionPersonal() {
       if (!res.ok) throw new Error(data.error)
 
       toast.success(`${userName} eliminado correctamente`)
-      fetchInitialData() // Refrescar tabla
+      fetchInitialData()
     } catch (err: any) {
       toast.error(err.message)
     }
@@ -122,7 +122,7 @@ export default function GestionPersonal() {
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Gestión de Personal</h1>
 
-      {/* FORMULARIO */}
+      {/* Formulario Crear Nuevo Miembro */}
       <form onSubmit={handleCreate} className="bg-white p-5 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-200 space-y-6">
         <div className="text-sm font-bold text-blue-600 border-b pb-2 uppercase tracking-wider mb-2">
           Crear Nuevo Miembro
@@ -179,14 +179,14 @@ export default function GestionPersonal() {
           </div>
         </div>
 
-        {/* ASIGNACIÓN DE CURSOS (Solo para Preceptores) */}
+        {/* Asignación Cursos (para preceptores) */}
         {role === 'preceptor' && (
           <div className="space-y-6 pt-6 border-t border-slate-100">
             <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Asignar Cursos por Turno:</h3>
-            
+
             {['Mañana', 'Tarde', 'Noche'].map(turno => {
-              const cursosDelTurno = cursosDisponibles.filter(c => c.shift === turno);
-              if (cursosDelTurno.length === 0) return null;
+              const cursosDelTurno = cursosDisponibles.filter(c => c.shift === turno)
+              if (cursosDelTurno.length === 0) return null
 
               return (
                 <div key={turno} className="space-y-3 bg-slate-50/50 p-4 rounded-2rem border border-slate-100">
@@ -208,11 +208,11 @@ export default function GestionPersonal() {
                     ))}
                   </div>
                 </div>
-              );
+              )
             })}
           </div>
         )}
-        
+
         <div className="pt-2">
           <button 
             disabled={loading}
@@ -223,8 +223,8 @@ export default function GestionPersonal() {
         </div>
       </form>
 
-      {/* TABLA DE PERSONAL - CON BOTÓN DE ELIMINAR */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+      {/* Tabla de Personal con botón eliminar */}
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden mt-8">
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-600px">
             <thead className="bg-slate-50 border-b text-[11px] uppercase text-slate-900 font-black">
@@ -233,22 +233,18 @@ export default function GestionPersonal() {
                 <th className="p-4 md:p-6">Email</th>
                 <th className="p-4 md:p-6">Rol</th>
                 <th className="p-4 md:p-6">Estado</th>
-                <th className="p-4 md:p-6 text-right">Acciones</th>
+                <th className="p-4 md:p-6 text-right">Acciones</th> {/* Nueva columna */}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {personal.map(p => (
                 <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 md:p-6 font-bold text-slate-900">
-                    {p.full_name || 'Sin nombre'}
-                  </td>
-                  <td className="p-4 md:p-6 text-slate-600">
-                    {p.email}
-                  </td>
+                  <td className="p-4 md:p-6 font-bold text-slate-900">{p.full_name || 'Sin nombre'}</td>
+                  <td className="p-4 md:p-6 text-slate-600">{p.email}</td>
                   <td className="p-4 md:p-6">
                     <span className={`px-2 py-1 rounded-lg text-xs font-bold uppercase ${
-                      p.role === 'preceptor' 
-                        ? 'bg-blue-100 text-blue-700' 
+                      p.role === 'preceptor'
+                        ? 'bg-blue-100 text-blue-700'
                         : 'bg-purple-100 text-purple-700'
                     }`}>
                       {p.role}
@@ -263,9 +259,7 @@ export default function GestionPersonal() {
                       className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
                       title="Eliminar usuario"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
+                      🗑️
                     </button>
                   </td>
                 </tr>
@@ -273,7 +267,7 @@ export default function GestionPersonal() {
             </tbody>
           </table>
         </div>
-        
+
         {personal.length === 0 && (
           <div className="p-10 text-center text-slate-400">
             <p className="text-lg mb-2">📭</p>
