@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import ResetPasswordContent from './ResetPasswordContent'
 
-// Forzamos que sea dinámico para evitar errores de build
 export const dynamic = "force-dynamic";
 
 export default function ResetPasswordPage() {

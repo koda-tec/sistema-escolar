@@ -21,7 +21,6 @@ export default function ResetPasswordContent() {
       const hash = window.location.hash
       const hashParams = new URLSearchParams(hash.substring(1))
       
-      // Intentamos sacar el token de la URL o del Hash (Supabase usa ambos según la config)
       const accessToken = hashParams.get('access_token') || searchParams.get('token')
       const type = hashParams.get('type') || searchParams.get('type')
 
@@ -60,7 +59,6 @@ export default function ResetPasswordContent() {
       return
     }
 
-    // Actualizamos la contraseña directamente
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
@@ -82,7 +80,9 @@ export default function ResetPasswordContent() {
           <div className="w-16 h-16 bg-red-100 rounded-full mx-auto flex items-center justify-center text-red-600 text-3xl mb-4">❌</div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Enlace inválido</h2>
           <p className="text-slate-500 mb-6">El enlace ha expirado o es incorrecto.</p>
-          <a href="/login" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Volver al Login</a>
+          <a href="/login" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all">
+            Volver al Login
+          </a>
         </div>
       </div>
     )
