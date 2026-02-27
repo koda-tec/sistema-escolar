@@ -59,23 +59,6 @@ export default function SuperAdminPage() {
     }
   }
 
-  async function deleteSchool(schoolId: string) {
-    if (!confirm('¿Seguro que querés eliminar esta escuela? Esta acción es irreversible.')) return
-
-    // LLAMADA A LA API
-    try {
-      const res = await fetch(`/api/schools/delete?id=${schoolId}`, { method: 'DELETE' })
-      const data = await res.json()
-
-      if (!res.ok) throw new Error(data.error)
-
-      toast.success('Escuela eliminada correctamente')
-      fetchSchools()
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-  }
-
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-black text-slate-800 tracking-tight">Panel de Control Koda</h1>
@@ -105,30 +88,37 @@ export default function SuperAdminPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {schools.map(s => (
-          <div key={s.id} className={`bg-white p-6 rounded-3xl border shadow-sm relative transition-opacity ${!s.active ? 'opacity-60 bg-gray-50' : ''}`}>
+          <div key={s.id} className={`bg-white p-6 rounded-3xl border shadow-sm relative transition-all duration-300 ${
+            !s.active ? 'opacity-60 bg-slate-50 border-slate-200' : 'border-blue-100 hover:shadow-lg hover:scale-[1.02]'
+          }`}>
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-bold text-slate-800">{s.name}</h3>
+                <h3 className="font-bold text-slate-800 text-lg">{s.name}</h3>
                 <p className="text-[10px] text-slate-400 font-mono mt-1">ID: {s.id}</p>
-                <p className="text-xs font-bold mt-2 text-slate-500 uppercase">{s.active ? '🟢 Activa' : '🔴 Inhabilitada'}</p>
+                <p className="text-xs font-bold mt-2 uppercase flex items-center gap-2">
+                  {s.active ? (
+                    <span className="text-green-600 flex items-center gap-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Activa
+                    </span>
+                  ) : (
+                    <span className="text-red-500 flex items-center gap-1">
+                      <span className="w-2 h-2 bg-red-400 rounded-full"></span> Inhabilitada
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
 
-            <div className="mt-6 flex gap-2">
+            <div className="mt-6">
               <button 
                 onClick={() => toggleActive(s.id, s.active)}
-                className={`flex-1 py-2 rounded-lg text-white font-bold text-sm transition-colors ${
-                  s.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-600 hover:bg-green-700'}`
-              }
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
+                  s.active 
+                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-200' 
+                    : 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-200'
+                }`}
               >
-                {s.active ? 'Inhabilitar' : 'Habilitar'}
-              </button>
-
-              <button 
-                onClick={() => deleteSchool(s.id)}
-                className="flex-1 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 font-bold text-sm border border-red-200"
-              >
-                Eliminar
+                {s.active ? '🚫 Inhabilitar Acceso' : '✅ Habilitar Acceso'}
               </button>
             </div>
           </div>
