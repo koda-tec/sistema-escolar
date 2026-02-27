@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import toast from 'react-hot-toast'
 
-// Función auxiliar para convertir la llave VAPID (Corrige el error de la consola)
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -22,37 +21,52 @@ export default function PushNotif() {
   const supabase = createClient()
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      setIsSupported(true)
-      // Comprobar si ya tiene permiso
-      if (Notification.permission === 'granted') setIsSubscribed(true)
+    const checkStatus = async () => {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        setIsSupported(true)
+        
+        // 1. Verificamos si ya existe la suscripción en la BASE DE DATOS
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data } = await supabase
+            .from('push_subscriptions')
+            .select('id')
+            .eq('profile_id', user.id)
+            .maybeSingle()
+          
+          // Si el registro existe en Supabase, ocultamos el botón
+          if (data) setIsSubscribed(true)
+        }
+      }
     }
-  }, [])
+    checkStatus()
+  }, [supabase])
 
   const subscribe = async () => {
     setLoading(true)
     try {
-      // 1. Pedir permiso
+      // 2. Pedir permiso
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
-        toast.error("Permiso denegado. Habilitalo en la configuración del sitio.")
+        alert("Debes permitir las notificaciones en los ajustes de tu iPhone.")
         setLoading(false)
         return
       }
 
-      // 2. Registrar/Esperar Service Worker
-      const registration = await navigator.serviceWorker.ready
-      
-      // 3. Suscribir al servidor de Push
-      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-      if (!publicKey) throw new Error("Falta la VAPID Public Key en el entorno")
+      // 3. Obtener el Service Worker (Con timeout para que no cuelgue en iPhone)
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout SW")), 5000))
+      ]) as ServiceWorkerRegistration;
 
+      // 4. Suscribir
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
+        applicationServerKey: urlBase64ToUint8Array(publicKey!)
       })
 
-      // 4. Guardar en Supabase
+      // 5. Guardar en Supabase (Convertimos a objeto plano para evitar errores de JSON)
       const { data: { user } } = await supabase.auth.getUser()
       const { error } = await supabase.from('push_subscriptions').upsert({
         profile_id: user?.id,
@@ -62,10 +76,11 @@ export default function PushNotif() {
       if (error) throw error
 
       setIsSubscribed(true)
-      toast.success("¡Alertas activadas con éxito!")
+      toast.success("Notificaciones activadas")
     } catch (error: any) {
-      console.error("PUSH ERROR:", error)
-      toast.error("Error al configurar alertas")
+      console.error(error)
+      // Mostramos el error en un alert porque en iPhone no ves la consola
+      alert("Error técnico: " + error.message)
     } finally {
       setLoading(false)
     }
@@ -74,23 +89,23 @@ export default function PushNotif() {
   if (!isSupported || isSubscribed) return null
 
   return (
-    <div className="bg-linear-to-r from-blue-600 to-blue-700 p-6 rounded-[2.5rem] text-white shadow-xl shadow-blue-200 flex flex-col md:flex-row items-center justify-between gap-6 mb-8 animate-in slide-in-from-top-4 duration-1000">
-      <div className="flex items-center gap-4 text-left">
-        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
-          🔔
+    <div className="bg-linear-to-br from-blue-600 to-indigo-700 p-6 rounded-[2.5rem] text-white shadow-xl mb-8 animate-in slide-in-from-top-4 duration-700">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-left">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl shadow-inner border border-white/20">🔔</div>
+          <div className="text-left">
+            <h3 className="font-black text-lg uppercase tracking-tighter leading-none mb-1">Alertas en tiempo real</h3>
+            <p className="text-blue-100 text-xs font-medium italic">Vibración inmediata para inasistencias.</p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-black text-lg uppercase tracking-tighter leading-none mb-1">Activar Alertas Críticas</h3>
-          <p className="text-blue-100 text-xs font-medium italic">Recibí inasistencias y notas en tiempo real.</p>
-        </div>
+        <button 
+          onClick={subscribe}
+          disabled={loading}
+          className="w-full md:w-auto bg-white text-blue-600 px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50"
+        >
+          {loading ? 'Sincronizando...' : 'Habilitar Notificaciones'}
+        </button>
       </div>
-      <button 
-        onClick={subscribe}
-        disabled={loading}
-        className="w-full md:w-auto bg-white text-blue-600 px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-      >
-        {loading ? 'Configurando...' : 'Habilitar Notificaciones'}
-      </button>
     </div>
   )
 }
