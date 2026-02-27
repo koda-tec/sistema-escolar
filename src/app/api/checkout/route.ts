@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         auto_return: 'approved',
         external_reference: user.id, // ID del padre para el Webhook
         // IMPORTANTE: Mercado Pago exige HTTPS para la notificación
-        notification_url: 'https://sistema-escolar-dusky.vercel.app/api/webhooks/mercadopago', 
+        notification_url: 'https://kodaed.vercel.app/api/webhooks/mercadopago', 
       }
     });
 
