@@ -22,25 +22,34 @@ export default function SuperAdminPage() {
     }
   }
 
+  // MODIFICAR ESTA FUNCIÓN
   async function createSchool(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    
-    const { error } = await supabase.from('schools').insert({ name, slug, active: true })
-    
-    if (error) {
-      toast.error('Error al crear: ' + error.message)
-    } else {
+
+    try {
+      const res = await fetch('/api/schools/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, slug })
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok) throw new Error(data.error)
+
       toast.success('Escuela creada correctamente')
       setName('')
       setSlug('')
       fetchSchools()
+    } catch (err: any) {
+      toast.error(err.message)
     }
+    
     setLoading(false)
   }
 
   async function toggleActive(schoolId: string, currentState: boolean) {
-    // LLAMADA A LA API
     try {
       const res = await fetch('/api/schools/toggle-active', {
         method: 'POST',
@@ -53,7 +62,7 @@ export default function SuperAdminPage() {
       if (!res.ok) throw new Error(data.error)
 
       toast.success(`Escuela ${!currentState ? 'habilitada' : 'inhabilitada'}`)
-      fetchSchools() // Refrescar lista
+      fetchSchools()
     } catch (err: any) {
       toast.error(err.message)
     }
