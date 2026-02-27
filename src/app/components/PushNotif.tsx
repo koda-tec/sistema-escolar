@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/app/utils/supabase/client'
 import toast from 'react-hot-toast'
 
-// Utilidad de conversión (Mantenela igual)
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -41,27 +40,30 @@ export default function PushNotif() {
       // 1. Pedir permiso
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
-        alert("Permiso denegado. Ve a Ajustes > Safari (o Chrome) > Notificaciones y habilitalas para este sitio.")
+        alert("Permiso denegado. Ve a Ajustes > Safari > Avanzado > Feature Flags y activa Push API si no te aparece el cartel.")
         setLoading(false)
         return
       }
 
-      // 2. FORZAR REGISTRO (Solución para iPhone)
-      // En lugar de solo esperar .ready, intentamos registrarlo explícitamente
-      let registration = await navigator.serviceWorker.getRegistration();
-      
-      if (!registration) {
-        console.log("No se encontró registro, re-registrando...");
-        registration = await navigator.serviceWorker.register('/sw.js');
+      // 2. SOLUCIÓN IPHONE: Asegurar que el SW sea el CONTROLADOR
+      if (!navigator.serviceWorker.controller) {
+        console.log("No hay controlador, intentando registrar y reclamar...");
+        await navigator.serviceWorker.register('/sw.js');
+        // Pequeña espera para que iOS procese la activación
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (!navigator.serviceWorker.controller) {
+            throw new Error("El sistema de notificaciones se está iniciando. Por favor, cierra la App y vuelve a abrirla desde el icono de inicio.");
+        }
       }
 
-      // 3. SUSCRIBIR (Con reintentos)
-      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-      if (!publicKey) throw new Error("Falta VAPID Key");
+      const registration = await navigator.serviceWorker.ready;
 
+      // 3. SUSCRIBIR
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
+        applicationServerKey: urlBase64ToUint8Array(publicKey!)
       })
 
       // 4. GUARDAR EN DB
@@ -77,7 +79,7 @@ export default function PushNotif() {
       toast.success("Notificaciones activadas")
     } catch (error: any) {
       console.error("Error Push:", error)
-      alert("Error en iPhone: " + error.message + ". Intenta cerrar y volver a abrir la App instalada.");
+      alert("⚠️ " + error.message);
     } finally {
       setLoading(false)
     }
@@ -91,8 +93,8 @@ export default function PushNotif() {
         <div className="flex items-center gap-4 text-left">
           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl shadow-inner border border-white/20">🔔</div>
           <div className="text-left">
-            <h3 className="font-black text-lg uppercase tracking-tighter leading-none mb-1">Alertas Críticas</h3>
-            <p className="text-blue-100 text-xs font-medium italic">Vibración inmediata para inasistencias.</p>
+            <h3 className="font-black text-lg uppercase tracking-tighter leading-none mb-1">Alertas en tiempo real</h3>
+            <p className="text-blue-100 text-xs font-medium italic">Recibí inasistencias y notas en tu iPhone.</p>
           </div>
         </div>
         <button 
