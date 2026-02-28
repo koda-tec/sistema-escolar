@@ -47,15 +47,16 @@ export async function POST(request: Request) {
     }
 
     // 3. Crear o actualizar perfil
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .upsert({
-        id: userId,
-        full_name: fullName,
-        role: role,
-        school_id: schoolId,
-        must_change_password: true 
-      }, { onConflict: 'id' })
+   const { error: profileError } = await supabaseAdmin
+  .from('profiles')
+  .upsert({
+    id: userId,
+    full_name: fullName,
+    email: email,          // <== agregar aquí el email
+    role: role,
+    school_id: schoolId,
+    must_change_password: true 
+  }, { onConflict: 'id' })
 
     if (profileError) throw profileError
 
