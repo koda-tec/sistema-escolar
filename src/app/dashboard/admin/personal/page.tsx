@@ -98,6 +98,25 @@ export default function GestionPersonal() {
     setLoading(false)
   }
 
+  // --- FUNCIÓN ELIMINAR ---
+  async function handleDelete(userId: string, userName: string) {
+    if (!confirm(`¿Estás seguro de eliminar a ${userName}? Esta acción no se puede deshacer.`)) return
+
+    try {
+      const res = await fetch('/api/personal/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId: userId })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success(`${userName} eliminado correctamente`)
+      fetchInitialData()
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+  }
+
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Gestión de Personal</h1>
@@ -160,39 +179,39 @@ export default function GestionPersonal() {
         </div>
 
         {/* ASIGNACIÓN DE CURSOS (Solo para Preceptores) */}
-{/* Reemplaza la sección de ASIGNACIÓN DE CURSOS por esta: */}
-{role === 'preceptor' && (
-  <div className="space-y-6 pt-6 border-t border-slate-100">
-    <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Asignar Cursos por Turno:</h3>
-    
-    {['Mañana', 'Tarde', 'Noche'].map(turno => {
-      const cursosDelTurno = cursosDisponibles.filter(c => c.shift === turno);
-      if (cursosDelTurno.length === 0) return null;
+        {role === 'preceptor' && (
+          <div className="space-y-6 pt-6 border-t border-slate-100">
+            <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Asignar Cursos por Turno:</h3>
+            
+            {['Mañana', 'Tarde', 'Noche'].map(turno => {
+              const cursosDelTurno = cursosDisponibles.filter(c => c.shift === turno);
+              if (cursosDelTurno.length === 0) return null;
 
-      return (
-        <div key={turno} className="space-y-3 bg-slate-50/50 p-4 rounded-2rem border border-slate-100">
-          <p className="text-[10px] font-black uppercase text-blue-600 ml-2 tracking-widest">{turno}</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
-            {cursosDelTurno.map(curso => (
-              <button
-                key={curso.id}
-                type="button"
-                onClick={() => toggleCurso(curso.id)}
-                className={`p-3 rounded-2xl text-[10px] font-black transition-all border ${
-                  cursosSeleccionados.includes(curso.id)
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200 scale-105'
-                    : 'bg-white text-slate-400 border-slate-200 hover:border-blue-300'
-                }`}
-              >
-                {curso.name} "{curso.section}"
-              </button>
-            ))}
+              return (
+                <div key={turno} className="space-y-3 bg-slate-50/50 p-4 rounded-2rem border border-slate-100">
+                  <p className="text-[10px] font-black uppercase text-blue-600 ml-2 tracking-widest">{turno}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                    {cursosDelTurno.map(curso => (
+                      <button
+                        key={curso.id}
+                        type="button"
+                        onClick={() => toggleCurso(curso.id)}
+                        className={`p-3 rounded-2xl text-[10px] font-black transition-all border ${
+                          cursosSeleccionados.includes(curso.id)
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200 scale-105'
+                            : 'bg-white text-slate-400 border-slate-200 hover:border-blue-300'
+                        }`}
+                      >
+                        {curso.name} "{curso.section}"
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      );
-    })}
-  </div>
-)}
+        )}
+
         <div className="pt-2">
           <button 
             disabled={loading}
@@ -203,7 +222,7 @@ export default function GestionPersonal() {
         </div>
       </form>
 
-      {/* TABLA DE PERSONAL */}
+      {/* TABLA DE PERSONAL - CON BOTÓN ELIMINAR */}
       <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-600px">
@@ -213,6 +232,7 @@ export default function GestionPersonal() {
                 <th className="p-4 md:p-6">Email</th>
                 <th className="p-4 md:p-6">Rol</th>
                 <th className="p-4 md:p-6">Estado</th>
+                <th className="p-4 md:p-6 text-right min-w-[80px]">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
@@ -235,6 +255,15 @@ export default function GestionPersonal() {
                   </td>
                   <td className="p-4 md:p-6">
                     <span className="text-green-600 font-medium">✓ Activo</span>
+                  </td>
+                  <td className="p-4 md:p-6 text-right min-w-[80px]">
+                    <button
+                      onClick={() => handleDelete(p.id, p.full_name)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                      title="Eliminar usuario"
+                    >
+                      🗑️
+                    </button>
                   </td>
                 </tr>
               ))}
