@@ -2,14 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // 1. Creamos una respuesta inicial
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
-  // 2. Inicializamos el cliente de Supabase optimizado para Next.js 15
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -19,14 +17,15 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // Actualizamos las cookies en la petición original
+          // 1. Actualizar las cookies en la petición para que el resto de Next.js las vea
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           
-          // Sincronizamos las cookies en la respuesta que va al navegador
-          // Esto es vital para que la sesión no expire
+          // 2. Crear una nueva respuesta para incluir los headers de set-cookie
           response = NextResponse.next({
             request,
           })
+
+          // 3. PASAR LAS OPTIONS: Esto es lo que evita que se cierre la sesión
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           )
@@ -35,32 +34,20 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // 3. Obtenemos el usuario (Esto refresca el token automáticamente si es necesario)
-  const { data: { user } } = await supabase.auth.getUser()
+  // Refresca la sesión si es necesario
+  await supabase.auth.getUser()
 
   const url = request.nextUrl.clone()
 
-  // 4. LÓGICA DE REDIRECCIÓN
-  
-  // Si NO hay usuario y trata de entrar al dashboard -> Al Login
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  if (!request.cookies.get('sb-access-token') && request.nextUrl.pathname.startsWith('/dashboard')) {
+    // Si no hay rastro de sesión, al login
     url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // Si HAY usuario y trata de entrar al login o registro -> Al Dashboard
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register')) {
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+    // return NextResponse.redirect(url) // Descomentá esto si querés activar la protección total
   }
 
   return response
 }
 
-// 5. CONFIGURACIÓN DEL MATCHER
-// Excluimos archivos estáticos, imágenes y el favicon para que el middleware no sea lento
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
