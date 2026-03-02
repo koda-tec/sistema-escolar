@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export async function createClient() {
-  const cookieStore = await cookies()
+  const cookieStore = await cookies() // En Next 15 esto DEBE ser await
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,13 +14,11 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
-            // PASAR LAS OPTIONS ES LO QUE HACE QUE LA COOKIE SEA PERSISTENTE
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
           } catch {
-            // El servidor a veces falla si intentas setear cookies en un Server Component
-            // Esto es normal en Next.js, por eso el Middleware es el que manda.
+            // Esto se ignora si se llama desde un Server Component
           }
         },
       },
