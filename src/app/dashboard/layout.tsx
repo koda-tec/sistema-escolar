@@ -24,27 +24,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (authError || !user) return router.push('/login')
       setUser(user)
 
-      // IMPORTANTE: Seleccionamos 'active' de la escuela para verificar el estado
-      const { data: profileData } = await supabase
+
+      // 1. Intentamos traer el perfil con los datos de la escuela
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*, schools(id, name, logo_url, active)')
         .eq('id', user.id)
-        .maybeSingle()
+        .maybeSingle();
 
-      // --- BLOQUEO DE ESCUELA INHABILITADA ---
-      if (profileData?.school_id) {
-        // Si el usuario tiene escuela y esta está inactiva (active === false)
-        if (profileData.schools && profileData.schools.active === false) {
-          toast.error('Tu institución está temporalmente inhábil. Contacta a KodaEd.')
-          await supabase.auth.signOut()
-          router.push('/login')
-          return // Detenemos la ejecución
+      if (profileError) {
+        console.error("Error cargando perfil:", profileError.message);
+      }
+
+      // --- LÓGICA DE SEGURIDAD Y BLOQUEO ---
+      
+      // Si el perfil no existe en absoluto (es NULL)
+      if (!profileData) {
+        console.log("⚠️ Perfil no encontrado en la tabla profiles.");
+        // Podés elegir mostrar un mensaje o crear el perfil aquí si fuera necesario
+      } else {
+        
+        // Si el usuario TIENE escuela asignada
+        if (profileData.school_id) {
+          // Extraemos la info de la escuela (manejando si viene como objeto o array)
+          const escuela = Array.isArray(profileData.schools) ? profileData.schools[0] : profileData.schools;
+
+          // BLOQUEO: Si la escuela está inactiva
+          if (escuela && escuela.active === false) {
+            toast.error('Tu institución está temporalmente inactiva. Contacta a KodaEd.');
+            await supabase.auth.signOut();
+            router.push('/login');
+            return; 
+          }
         }
       }
-      // --------------------------------------
 
-      setProfile(profileData)
-      setLoading(false)
+      setProfile(profileData);
+      setLoading(false);
+
 
       // Control de cambio de contraseña obligatorio para roles
       const rol = profileData?.role?.toLowerCase().trim() || ''
