@@ -19,8 +19,6 @@ function urlBase64ToUint8Array(base64String: string) {
 export default function PushNotif() {
   const [isSupported, setIsSupported] = useState(false)
   const [loading, setLoading] = useState(false)
-  
-  // Iniciamos asumiendo que está suscrito para que NO parpadee al entrar
   const [isSubscribed, setIsSubscribed] = useState(true) 
   const [hasChecked, setHasChecked] = useState(false) 
   
@@ -28,7 +26,6 @@ export default function PushNotif() {
 
   useEffect(() => {
     const checkStatus = async () => {
-      // 1. Verificar soporte básico
       const supported = 'serviceWorker' in navigator && 'PushManager' in window;
       setIsSupported(supported);
 
@@ -36,23 +33,18 @@ export default function PushNotif() {
         try {
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
-            // 2. Verificar si ya existe en la DB de Supabase
             const { data } = await supabase
               .from('push_subscriptions')
               .select('id')
               .eq('profile_id', user.id)
               .maybeSingle()
             
-            // Si NO hay datos, entonces NO está suscrito y mostramos el cartel
-            if (!data) {
-              setIsSubscribed(false)
-            }
+            if (!data) setIsSubscribed(false)
           }
         } catch (error) {
           console.error("Error comprobando suscripción:", error);
         }
       }
-      // Marcamos que la comprobación terminó (habilitando el renderizado)
       setHasChecked(true)
     }
     checkStatus()
@@ -64,17 +56,26 @@ export default function PushNotif() {
       // 1. Pedir permiso
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
-        alert("Permiso denegado. Habilita las notificaciones en Ajustes del navegador o del celular.")
+        alert("Permiso denegado. Habilitá las notificaciones en la configuración del navegador/celular.")
         setLoading(false)
         return
       }
 
-      // 2. Asegurar que el Service Worker esté listo
-      const registration = await navigator.serviceWorker.ready;
+      // 2. Obtener el Service Worker (Usamos getRegistration para evitar que se cuelgue)
+      let registration = await navigator.serviceWorker.getRegistration();
+      
+      if (!registration) {
+        // Si por alguna razón no está, intentamos registrarlo manualmente
+        registration = await navigator.serviceWorker.register('/sw.js');
+      }
 
       // 3. Suscribir al Push Manager
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-      if (!publicKey) throw new Error("Falta la llave pública VAPID");
+      if (!publicKey) {
+        alert("Error: No se encontró la llave pública VAPID.");
+        setLoading(false);
+        return;
+      }
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -94,28 +95,25 @@ export default function PushNotif() {
       toast.success("Notificaciones activadas")
     } catch (error: any) {
       console.error("Error Push:", error)
-      alert("⚠️ No se pudieron activar las notificaciones: " + error.message);
+      alert("⚠️ Error al activar: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false)
     }
   }
 
-  // --- LÓGICA ANTI-PESTAÑEO ---
-  // Si no terminó de chequear, o no es soportado, o ya está suscrito: NO MOSTRAR NADA.
   if (!hasChecked || !isSupported || isSubscribed) return null
 
   return (
     <div className="relative overflow-hidden bg-linear-to-br from-blue-600 to-indigo-700 p-6 md:p-8 rounded-[2.5rem] text-white shadow-2xl shadow-blue-900/20 border border-white/10 mb-10 animate-in slide-in-from-top-4 duration-700">
-      {/* Decoración de fondo */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
       
       <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col md:flex-row items-center gap-5 text-center md:text-left">
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center text-3xl shadow-inner border border-white/20">
+          <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center text-3xl shadow-inner border border-white/20 text-white">
             🔔
           </div>
           <div>
-            <h3 className="font-black text-2xl uppercase tracking-tighter leading-none mb-2">
+            <h3 className="font-black text-2xl uppercase tracking-tighter leading-none mb-2 text-white">
               Alertas Críticas
             </h3>
             <p className="text-blue-100 text-sm font-medium max-w-300px leading-snug">
