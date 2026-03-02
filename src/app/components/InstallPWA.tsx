@@ -5,6 +5,7 @@ export default function InstallPWA() {
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null); // NUEVO: Para guardar el evento de Android
 
   useEffect(() => {
     // 1. Detectar si ya está instalada
@@ -19,13 +20,14 @@ export default function InstallPWA() {
 
     // 3. Capturar evento para Android/Chrome
     const handler = (e: any) => {
-      e.preventDefault();
+      e.preventDefault(); // Evita que Chrome muestre su propio cartel automático
+      setDeferredPrompt(e); // Guardamos el evento para dispararlo con nuestro botón
       if (!isRunningStandalone) setIsVisible(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    // En iOS mostramos el mensaje manualmente
+    // En iOS, como no hay evento, mostramos el mensaje si no es standalone
     if (ios && !isRunningStandalone) {
       setIsVisible(true);
     }
@@ -33,11 +35,29 @@ export default function InstallPWA() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // NUEVA FUNCIÓN: Dispara el cartel de instalación en Android/Chrome
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+
+    // Mostramos el cartel oficial del navegador
+    deferredPrompt.prompt();
+
+    // Esperamos la respuesta del usuario
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`Usuario eligió: ${outcome}`);
+
+    if (outcome === 'accepted') {
+      setIsVisible(false);
+    }
+    
+    // Limpiamos el evento guardado
+    setDeferredPrompt(null);
+  };
+
   if (!isVisible || isStandalone) return null;
 
   return (
     <div className="relative overflow-hidden bg-linear-to-br from-blue-600 to-indigo-700 p-6 md:p-8 rounded-[2.5rem] text-white shadow-2xl shadow-blue-900/20 border border-white/10 mb-10 animate-in slide-in-from-top-4 duration-700">
-      {/* Decoración de fondo */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
       
       <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
@@ -45,7 +65,7 @@ export default function InstallPWA() {
           <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center text-4xl shadow-inner border border-white/20">
             {isIOS ? '' : '📱'}
           </div>
-          <div>
+          <div className="text-left">
             <h3 className="font-black text-2xl uppercase tracking-tighter leading-none mb-2">
               {isIOS ? 'Instalá KodaEd' : 'Descargá la App'}
             </h3>
@@ -58,13 +78,12 @@ export default function InstallPWA() {
         </div>
 
         {isIOS ? (
-          /* Instrucciones iOS Refinadas */
+          /* Instrucciones iOS */
           <div className="flex flex-col items-center md:items-end gap-3 w-full md:w-auto">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200 opacity-80 text-center">Pasos para instalar</p>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 bg-slate-950/40 px-4 py-3 rounded-2xl border border-white/10 text-xs font-bold whitespace-nowrap">
                 <span>1. Tocá</span>
-                {/* Icono de compartir nativo de iOS en SVG */}
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="inline-block stroke-white">
                   <path d="M12 15V3M12 3L8 7M12 3L16 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M4 11V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V11" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -76,7 +95,11 @@ export default function InstallPWA() {
             </div>
           </div>
         ) : (
-          <button className="bg-white text-blue-600 px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all">
+          /* Botón Android - AHORA CON onClick */
+          <button 
+            onClick={handleInstallClick}
+            className="w-full md:w-auto bg-white text-blue-600 px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all"
+          >
             Instalar ahora
           </button>
         )}
